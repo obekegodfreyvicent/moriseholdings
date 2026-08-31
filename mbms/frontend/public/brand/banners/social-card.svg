@@ -1,0 +1,32 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Morise Holdings Limited" xmlns="http://www.w3.org/2000/svg">
+  <title>Morise Holdings Limited — social share card</title>
+  <defs>
+    <linearGradient id="mg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16283F"/>
+      <stop offset="0.55" stop-color="#1E3A5F"/>
+      <stop offset="1" stop-color="#2E5395"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#mg)"/>
+
+  <g transform="translate(760 -60) scale(5.4)" opacity="0.09">
+    <path d="M32 94 V40 L64 74 L96 40 V94" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <g opacity="0.45" stroke="#FFFFFF" stroke-width="2" fill="none">
+    <polyline points="80,520 340,520 470,452 760,452 900,400 1140,400"/>
+  </g>
+  <circle cx="470" cy="452" r="7" fill="#D97706"/>
+  <circle cx="900" cy="400" r="7" fill="#D97706"/>
+
+  <g transform="translate(80 96)">
+    <rect x="0" y="0" width="104" height="104" rx="24" fill="#FFFFFF"/>
+    <path d="M26 78 V33 L52 61 L78 33 V78" fill="none" stroke="#1E3A5F" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M52 16 L63 27 L52 38 L41 27 Z" fill="#D97706"/>
+  </g>
+
+  <text x="210" y="150" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21" font-weight="600" letter-spacing="5" fill="#D97706">MORISE HOLDINGS LIMITED</text>
+  <text x="80" y="300" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="72" font-weight="800" fill="#FFFFFF">One group.</text>
+  <text x="80" y="380" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="72" font-weight="800" fill="#FFFFFF">One account.</text>
+  <text x="82" y="440" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="500" fill="rgba(255,255,255,0.82)">Inputs &amp; fuel · Logistics · Clearing &amp; forwarding · Warehousing · Collateral</text>
+</svg>

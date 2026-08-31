@@ -1,0 +1,7 @@
+<svg width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Morise" xmlns="http://www.w3.org/2000/svg">
+  <title>Morise logomark — light (for dark backgrounds)</title>
+  <path d="M32 94 V40 L64 74 L96 40 V94"
+        fill="none" stroke="#FFFFFF" stroke-width="13"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M64 20 L77 33 L64 46 L51 33 Z" fill="#D97706"/>
+</svg>

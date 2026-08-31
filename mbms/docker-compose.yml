@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mbms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mbms
+      POSTGRES_PASSWORD: mbms_dev_password
+      POSTGRES_DB: mbms_identity_org
+    ports:
+      - "5442:5432"
+    volumes:
+      - mbms_pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: mbms-redis
+    restart: unless-stopped
+    ports:
+      - "6390:6379"
+
+volumes:
+  mbms_pg_data:

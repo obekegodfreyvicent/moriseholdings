@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Net Asset Value | Morise Holdings Limited</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,340;9..144,440;9..144,560&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{--paper:#F2F0EA;--paper-raised:#FFFFFF;--ink:#15140F;--ink-soft:#5C594E;--ink-faint:#93907F;--line:#DEDACB;--bronze:#8A6A34;--bronze-tint:#EFE6D2;}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:15px;line-height:1.55;}
+h1,h2,h3{font-family:'Fraunces',serif;font-weight:440;margin:0;letter-spacing:-0.01em;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.wrap{max-width:1200px;margin:0 auto;padding:0 40px;}
+.utility{border-bottom:1px solid var(--line);}
+.utility-inner{display:flex;justify-content:flex-end;gap:26px;padding:9px 40px;max-width:1200px;margin:0 auto;font-size:12px;color:var(--ink-faint);}
+.utility a{color:inherit;text-decoration:none;}
+.mainnav{background:var(--paper-raised);border-bottom:1px solid var(--line);}
+.mainnav-inner{display:flex;align-items:center;justify-content:space-between;padding:22px 40px;max-width:1200px;margin:0 auto;}
+.wordmark{font-family:'Fraunces',serif;font-size:22px;font-weight:560;}
+.navlinks{display:flex;gap:36px;font-size:13.5px;color:var(--ink-soft);}
+.navlinks a{color:inherit;text-decoration:none;}
+.navlinks a.active{color:var(--ink);border-bottom:1px solid var(--bronze);padding-bottom:3px;}
+.subnav{display:flex;gap:28px;font-size:12.5px;color:var(--ink-faint);padding:14px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.subnav a{color:inherit;text-decoration:none;}
+.subnav a.active{color:var(--bronze);}
+.crumbs{padding:20px 0 0;font-size:12.5px;color:var(--ink-faint);}
+.crumbs b{color:var(--ink);font-weight:500;}
+.pagehead{padding:36px 0 40px;}
+.pagehead .eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--bronze);margin-bottom:14px;}
+.pagehead h1{font-size:36px;}
+.pagehead p{margin-top:16px;color:var(--ink-soft);font-size:14.5px;max-width:560px;}
+
+.nav-headline{display:flex;align-items:baseline;gap:20px;border:1px solid var(--line);padding:32px 36px;margin-bottom:8px;background:var(--paper-raised);}
+.nav-headline .navval{font-family:'Fraunces',serif;font-size:52px;}
+.nav-headline .navdelta{font-size:14px;color:var(--bronze);}
+.nav-headline .navdate{margin-left:auto;font-size:12.5px;color:var(--ink-faint);}
+
+.chart-block{border:1px solid var(--line);border-top:none;padding:36px;background:var(--paper-raised);margin-bottom:48px;}
+.chart-svg{width:100%;height:220px;}
+
+.breakdown h2{font-size:22px;margin-bottom:22px;}
+.bd-table{border:1px solid var(--line);margin-bottom:56px;}
+.bd-row{display:grid;grid-template-columns:1fr 140px 140px 100px;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);font-size:13.5px;align-items:center;}
+.bd-row.head{background:var(--bronze-tint);color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;}
+.bd-row:last-child{border-bottom:none;}
+.bd-row .cname{font-weight:500;}
+.bd-row .val{text-align:right;}
+.bd-row .pct{text-align:right;color:var(--ink-soft);}
+
+footer{border-top:1px solid var(--line);padding:40px 0;}
+.footer-inner{display:flex;justify-content:space-between;align-items:flex-start;}
+.footer-addr{font-size:12px;color:var(--ink-faint);line-height:1.6;}
+.footer-links{display:flex;gap:20px;font-size:12px;color:var(--ink-faint);}
+.footer-links a{color:inherit;text-decoration:none;}
+</style>
+</head>
+<body>
+
+<div class="utility"><div class="utility-inner"><a href="#">Archive</a><a href="#">Contacts</a><a href="#">Email alert</a><a href="#">FAQs</a></div></div>
+<div class="mainnav"><div class="mainnav-inner">
+  <div class="wordmark">MORISE</div>
+  <div class="navlinks"><a href="#">Morise</a><a href="#">Companies</a><a href="#">Capital</a><a href="#" class="active">Investors &amp; Media</a><a href="#">Sustainability</a></div>
+</div></div>
+
+<div class="wrap">
+  <div class="subnav">
+    <a href="#" class="active">Net Asset Value</a><a href="#">Shareholders corner</a><a href="#">Press releases</a><a href="#">Financial results</a><a href="#">Events</a>
+  </div>
+  <div class="crumbs">Morise &nbsp;/&nbsp; Investors &amp; Media &nbsp;/&nbsp; <b>Net Asset Value</b></div>
+
+  <div class="pagehead">
+    <div class="eyebrow">Investors &amp; media</div>
+    <h1>Net Asset Value</h1>
+    <p>NAV is calculated using listed market prices where available and independent valuations for unlisted holdings, updated monthly.</p>
+  </div>
+
+  <div class="nav-headline">
+    <div class="navval mono">£19.4bn</div>
+    <div class="navdelta mono">+4.2%</div>
+    <div class="navdate">Last updated 30 Dec 2025</div>
+  </div>
+
+  <div class="chart-block">
+    <svg class="chart-svg" viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0" y1="190" x2="800" y2="190" stroke="#DEDACB" stroke-width="1"/>
+      <line x1="0" y1="130" x2="800" y2="130" stroke="#DEDACB" stroke-width="1"/>
+      <line x1="0" y1="70" x2="800" y2="70" stroke="#DEDACB" stroke-width="1"/>
+      <polyline fill="none" stroke="#8A6A34" stroke-width="2.5" points="0,150 100,142 200,158 300,120 400,132 500,98 600,108 700,74 800,60"/>
+      <circle cx="800" cy="60" r="4" fill="#8A6A34"/>
+      <text x="0" y="212" font-size="11" fill="#93907F" font-family="IBM Plex Mono">Jan</text>
+      <text x="760" y="212" font-size="11" fill="#93907F" font-family="IBM Plex Mono">Dec</text>
+    </svg>
+  </div>
+
+  <div class="breakdown">
+    <h2>NAV by holding</h2>
+    <div class="bd-table">
+      <div class="bd-row head"><span>Company</span><span class="val">Value</span><span class="val">Ownership</span><span class="pct">% of NAV</span></div>
+      <div class="bd-row"><span class="cname">Aldric Marine</span><span class="val mono">£4.6bn</span><span class="val mono">61%</span><span class="pct mono">23.7%</span></div>
+      <div class="bd-row"><span class="cname">Halveston Diagnostics</span><span class="val mono">£3.9bn</span><span class="val mono">74%</span><span class="pct mono">20.1%</span></div>
+      <div class="bd-row"><span class="cname">Corven Materials</span><span class="val mono">£2.8bn</span><span class="val mono">58%</span><span class="pct mono">14.4%</span></div>
+      <div class="bd-row"><span class="cname">Auberval</span><span class="val mono">£2.3bn</span><span class="val mono">80%</span><span class="pct mono">11.9%</span></div>
+      <div class="bd-row"><span class="cname">Isovane Pharma</span><span class="val mono">£1.9bn</span><span class="val mono">67%</span><span class="pct mono">9.8%</span></div>
+      <div class="bd-row"><span class="cname">Other holdings &amp; cash</span><span class="val mono">£3.9bn</span><span class="val mono">—</span><span class="pct mono">20.1%</span></div>
+    </div>
+  </div>
+</div>
+
+<footer><div class="wrap footer-inner">
+  <div class="footer-addr">Morise Holdings Limited<br>14 Aldgate Court, London EC3N 1AB, United Kingdom<br>Company No. 09215467</div>
+  <div class="footer-links"><a href="#">Cookie policy</a><a href="#">Privacy policy</a><a href="#">Security notice</a></div>
+</div></footer>
+
+</body>
+</html>

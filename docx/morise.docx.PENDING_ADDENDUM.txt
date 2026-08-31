@@ -1,0 +1,19 @@
+morise.docx was open in LibreOffice, so this section was NOT applied automatically —
+paste it in as a new Heading 1 section at the end of the document (same format as
+every earlier "Implementation Status Note N" entry), then delete this file. Or just
+tell Claude it's closed now and ask it to apply this automatically.
+
+============================================================
+
+HEADING (Heading 1 style):
+Implementation Status Note 24 (19 August 2026) — Customer Storefront, Responsiveness Pass and Landing Page
+
+BODY (plain/Normal paragraphs, one per line below):
+
+Scope note: this entry bundles three related requests handled back-to-back in one continuous session, the same class of single-entry bundling this document set already uses when one pass covers several closely related asks — build the actual customer-facing storefront screenshots/Customer/'s ten mockups had always implied but never had running code behind (explicitly confirmed as new scope, not something already there to start); make that storefront responsive once it shipped without a mobile pass; and develop a public landing page with a first-visit disclaimer for a visitor who hasn't signed in yet.
+
+Built: a real Sales/Invoicing/Payments module (Order, OrderItem, Invoice, Payment, PaymentAllocation — an order posts a real balanced journal entry at creation and is rejected if it would exceed the customer's credit limit; cancellation reverses the entry rather than deleting anything) and a new Support Ticketing module (SupportTicket, TicketMessage), both behind a second, structurally separate authentication stack (a customer signs in with an account number or email, never a staff User record). A second web application, mbms/storefront/, implements all ten Customer mockup screens plus two with no source mockup (a Landing page and a first-visit disclaimer modal) against this real backend, not a mockup. Minimal staff-side screens (Orders fulfillment, Support Ticket reply) were added to the existing Admin app so a customer's order or ticket does not dead-end. The storefront was then made responsive (a fluid header/nav and scrollable tables with no fixed-width overflow from 320px to 1440px) and given the public landing page and disclaimer at "/", replacing the previous hard redirect-to-login for a signed-out visitor. Migration: sprint16_customer_storefront. Four new permissions (sales.order.manage/viewAll, support.ticket.manage/viewAll); no existing permission was changed.
+
+Three real defects were found and fixed across these passes, not before them: a seed-script idempotency bug that doubled a demo customer's outstanding balance on a second seed run (order/invoice numbers were derived from a live row count rather than a fixed literal, unlike every other seed in this project); a frontend permission-gate mismatch where the new Support Tickets admin screen's hasRole() check didn't include a role the backend had actually granted the permission to, hiding a working reply form; and a CSS specificity leak where a rule added to fix one header's responsive wrap silently reordered an unrelated header on the new Landing page, caught only by inspecting a screenshot, not by any automated check.
+
+See mbms/README.md, "Sprint 16: Customer Storefront", "Storefront responsiveness pass" and "Landing page and disclaimer added", for the full detail and verification method.

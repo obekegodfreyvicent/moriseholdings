@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output / caches
+dist/
+build/
+*.tsbuildinfo
+.vite/
+
+# Environment / secrets (keep .env.example)
+.env
+.env.*
+!.env.example
+
+# docx_backup*/ snapshot directories (root + nested under docx/).
+# Git history is the version trail; these local safety copies are not tracked.
+docx_backup*/
+
+# LibreOffice / editor lock + temp files
+.~lock.*#
+*~
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

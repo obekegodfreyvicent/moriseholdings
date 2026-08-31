@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Morise Holdings Limited</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,340;9..144,440;9..144,560&family=Inter:wght@400;500;600&display=swap');
+:root{
+  --paper:#F2F0EA;
+  --paper-raised:#FFFFFF;
+  --ink:#15140F;
+  --ink-soft:#5C594E;
+  --ink-faint:#93907F;
+  --line:#DEDACB;
+  --bronze:#8A6A34;
+  --bronze-tint:#EFE6D2;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:15px;line-height:1.55;}
+h1,h2,h3{font-family:'Fraunces',serif;font-weight:440;margin:0;letter-spacing:-0.01em;}
+.wrap{max-width:1200px;margin:0 auto;padding:0 40px;}
+
+/* utility bar */
+.utility{border-bottom:1px solid var(--line);}
+.utility-inner{display:flex;justify-content:flex-end;gap:26px;padding:9px 40px;max-width:1200px;margin:0 auto;font-size:12px;color:var(--ink-faint);}
+.utility a{color:inherit;text-decoration:none;}
+
+/* main nav */
+.mainnav{background:var(--paper-raised);border-bottom:1px solid var(--line);}
+.mainnav-inner{display:flex;align-items:center;justify-content:space-between;padding:22px 40px;max-width:1200px;margin:0 auto;}
+.wordmark{font-family:'Fraunces',serif;font-size:22px;font-weight:560;letter-spacing:-0.01em;}
+.navlinks{display:flex;gap:36px;font-size:13.5px;color:var(--ink-soft);}
+.navlinks a{color:inherit;text-decoration:none;}
+.navlinks a:hover{color:var(--ink);}
+
+/* hero */
+.hero{position:relative;height:520px;background:linear-gradient(180deg,rgba(21,20,15,0.15),rgba(21,20,15,0.55)),linear-gradient(135deg,#3A362B,#15140F);display:flex;align-items:flex-end;}
+.hero-inner{padding:0 40px 56px;max-width:1200px;margin:0 auto;width:100%;}
+.hero-eyebrow{color:var(--bronze-tint);font-size:12.5px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;}
+.hero h1{color:#FBFAF6;font-size:46px;max-width:640px;line-height:1.15;}
+.hero-cta{margin-top:26px;display:inline-block;color:#FBFAF6;font-size:13.5px;border-bottom:1px solid rgba(251,250,246,0.5);padding-bottom:4px;text-decoration:none;}
+
+/* info strip */
+.infostrip{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);}
+.info-cell{padding:26px 40px;border-right:1px solid var(--line);}
+.info-cell:last-child{border-right:none;}
+.info-cell .ilabel{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin-bottom:10px;}
+.info-cell .ival{font-family:'Fraunces',serif;font-size:24px;font-weight:440;}
+.info-cell .idelta{font-size:12px;color:var(--bronze);margin-top:6px;}
+.info-cell a{font-size:12.5px;color:var(--ink-soft);text-decoration:none;border-bottom:1px solid var(--line);}
+
+/* section */
+.section{padding:64px 0;}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:36px;border-bottom:1px solid var(--line);padding-bottom:20px;}
+.section-head .eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:8px;}
+.section-head h2{font-size:27px;}
+.section-head a{font-size:13px;color:var(--ink-soft);text-decoration:none;border-bottom:1px solid var(--line);white-space:nowrap;}
+
+/* companies grid */
+.co-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);}
+.co-card{background:var(--paper-raised);padding:0;position:relative;overflow:hidden;}
+.co-photo{height:150px;background:linear-gradient(135deg,#E7E2D3,#D3CDBA);}
+.co-body{padding:20px 22px 24px;}
+.co-sector{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--bronze);margin-bottom:8px;}
+.co-body h3{font-size:18px;}
+.co-body p{font-size:13px;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
+.co-body .stake{font-size:12px;color:var(--ink-faint);margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
+
+/* letter quote */
+.letter{background:var(--ink);color:#F2F0EA;padding:64px 0;}
+.letter-inner{max-width:760px;margin:0 auto;padding:0 40px;}
+.letter .eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:#B7A98A;margin-bottom:22px;}
+.letter blockquote{font-family:'Fraunces',serif;font-size:26px;font-weight:340;line-height:1.4;margin:0;color:#FBFAF6;}
+.letter-sig{margin-top:28px;font-size:13px;color:#B7A98A;}
+
+/* related */
+.related-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;}
+.related-card .co-photo{height:130px;}
+.related-card h4{font-family:'Fraunces',serif;font-size:16px;font-weight:440;margin-top:16px;}
+.related-card p{font-size:13px;color:var(--ink-soft);margin-top:8px;}
+.related-card a{font-size:12.5px;color:var(--ink-soft);margin-top:12px;display:inline-block;border-bottom:1px solid var(--line);text-decoration:none;}
+
+footer{border-top:1px solid var(--line);padding:40px 0;}
+.footer-inner{display:flex;justify-content:space-between;align-items:flex-start;}
+.footer-addr{font-size:12px;color:var(--ink-faint);line-height:1.6;}
+.footer-links{display:flex;gap:20px;font-size:12px;color:var(--ink-faint);}
+.footer-links a{color:inherit;text-decoration:none;}
+</style>
+</head>
+<body>
+
+<div class="utility">
+  <div class="utility-inner">
+    <a href="#">Archive</a><a href="#">Contacts</a><a href="#">Email alert</a><a href="#">FAQs</a>
+  </div>
+</div>
+
+<div class="mainnav">
+  <div class="mainnav-inner">
+    <div class="wordmark">MORISE</div>
+    <div class="navlinks">
+      <a href="#">Morise</a>
+      <a href="#">Companies</a>
+      <a href="#">Capital</a>
+      <a href="#">Investors &amp; Media</a>
+      <a href="#">Sustainability</a>
+    </div>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Morise Holdings Limited</div>
+    <h1>We build enduring companies across generations.</h1>
+    <a class="hero-cta" href="#">Discover our approach →</a>
+  </div>
+</div>
+
+<div class="infostrip">
+  <div class="info-cell">
+    <div class="ilabel">Net asset value</div>
+    <div class="ival">£19.4bn</div>
+    <div class="idelta">+4.2% since last update</div>
+  </div>
+  <div class="info-cell">
+    <div class="ilabel">Portfolio companies</div>
+    <div class="ival">11</div>
+    <a href="#">View all companies</a>
+  </div>
+  <div class="info-cell">
+    <div class="ilabel">Latest results</div>
+    <div class="ival">FY 2025</div>
+    <a href="#">Read full-year results</a>
+  </div>
+</div>
+
+<div class="wrap section">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Portfolio</div>
+      <h2>Companies</h2>
+    </div>
+    <a href="#">Investment approach</a>
+  </div>
+  <div class="co-grid">
+    <div class="co-card">
+      <div class="co-photo"></div>
+      <div class="co-body">
+        <div class="co-sector">Precision engineering</div>
+        <h3>Aldric Marine</h3>
+        <p>Marine propulsion systems for commercial and defence fleets.</p>
+        <div class="stake">Largest shareholder · 61% stake</div>
+      </div>
+    </div>
+    <div class="co-card">
+      <div class="co-photo"></div>
+      <div class="co-body">
+        <div class="co-sector">Healthcare</div>
+        <h3>Halveston Diagnostics</h3>
+        <p>Clinical diagnostics and laboratory instruments, global distribution.</p>
+        <div class="stake">Controlling shareholder · 74% stake</div>
+      </div>
+    </div>
+    <div class="co-card">
+      <div class="co-photo"></div>
+      <div class="co-body">
+        <div class="co-sector">Media &amp; publishing</div>
+        <h3>The Quarterly Post</h3>
+        <p>Independent financial journalism and long-form reporting.</p>
+        <div class="stake">Minority shareholder · 22% stake</div>
+      </div>
+    </div>
+    <div class="co-card">
+      <div class="co-photo"></div>
+      <div class="co-body">
+        <div class="co-sector">Industrial</div>
+        <h3>Corven Materials</h3>
+        <p>Specialty alloys and advanced materials for aerospace manufacturers.</p>
+        <div class="stake">Largest shareholder · 58% stake</div>
+      </div>
+    </div>
+    <div class="co-card">
+      <div class="co-photo"></div>
+      <div class="co-body">
+        <div class="co-sector">Luxury goods</div>
+        <h3>Auberval</h3>
+        <p>Leather goods and small-batch craftsmanship, retail across Europe.</p>
+        <div class="stake">Controlling shareholder · 80% stake</div>
+      </div>
+    </div>
+    <div class="co-card">
+      <div class="co-photo"></div>
+      <div class="co-body">
+        <div class="co-sector">Energy</div>
+        <h3>Faravel Renewables</h3>
+        <p>Offshore wind development and long-duration storage projects.</p>
+        <div class="stake">Minority shareholder · 31% stake</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="letter">
+  <div class="letter-inner">
+    <div class="eyebrow">Letter to shareholders</div>
+    <blockquote>We do not chase quarters. We build companies that are still standing, and still leading, in fifty years.</blockquote>
+    <div class="letter-sig">Adrian Voss, Chief Executive Officer</div>
+  </div>
+</div>
+
+<div class="wrap section">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">About Morise</div>
+      <h2>Related</h2>
+    </div>
+  </div>
+  <div class="related-grid">
+    <div class="related-card">
+      <div class="co-photo"></div>
+      <h4>Our history</h4>
+      <p>Four generations of the Morise family building industrial and consumer companies.</p>
+      <a href="#">Read more</a>
+    </div>
+    <div class="related-card">
+      <div class="co-photo"></div>
+      <h4>Profile</h4>
+      <p>A holding company with a culture of patient capital and active governance.</p>
+      <a href="#">Read more</a>
+    </div>
+    <div class="related-card">
+      <div class="co-photo"></div>
+      <h4>Leadership</h4>
+      <p>Meet the board and management team steering the group.</p>
+      <a href="#">Read more</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div class="footer-addr">
+      Morise Holdings Limited<br>
+      14 Aldgate Court, London EC3N 1AB, United Kingdom<br>
+      Company No. 09215467
+    </div>
+    <div class="footer-links">
+      <a href="#">Cookie policy</a>
+      <a href="#">Privacy policy</a>
+      <a href="#">Security notice</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

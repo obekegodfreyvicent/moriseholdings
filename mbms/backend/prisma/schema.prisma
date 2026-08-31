@@ -1,0 +1,2410 @@
+// Morise Holdings Limited MBMS — Phase 1 Sprint 1+2 schema.
+//
+// Faithful to 08_Database Design Document, Sections 3 (Identity Service) and
+// 4 (Organization Service): UUID PKs, snake_case columns, status-not-hard-delete,
+// created_at/updated_at on every table.
+//
+// Deliberate simplification vs. the document: Section 1 specifies a
+// database-per-service split (each of the 8 Phase 1 microservices owns its
+// own Postgres database, cross-service refs are logical UUIDs with no DB-level
+// FK). This Sprint 1+2 slice runs Identity and Organization as two Prisma
+// model groups in ONE database, inside a single NestJS app with clearly
+// separated modules — real FKs are used only within each service's own
+// tables, matching the document's within-service constraints. Splitting into
+// physically separate services/databases is deferred, per the document's own
+// Section 13 note that Phase 1 has no story requiring a cross-service
+// transaction yet.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================== Identity Service ==============================
+
+enum UserStatus {
+  active
+  inactive
+  locked
+}
+
+model User {
+  id                  String     @id @default(uuid())
+  email               String     @unique @db.VarChar(255)
+  passwordHash        String     @map("password_hash") @db.VarChar(255)
+  firstName           String     @map("first_name") @db.VarChar(100)
+  lastName            String     @map("last_name") @db.VarChar(100)
+  status              UserStatus @default(active)
+  failedLoginAttempts Int        @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?  @map("locked_until")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  userRoles       UserRole[]
+  userPermissions UserPermission[]
+  scopes          UserScope[]
+  refreshTokens   RefreshToken[]
+  resetTokens     PasswordResetToken[]
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model Role {
+  id           String  @id @default(uuid())
+  name         String  @unique @db.VarChar(100)
+  description  String?
+  isSystemRole Boolean @default(false) @map("is_system_role")
+
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  code        String  @unique @db.VarChar(150)
+  description String?
+  // Delegated-administration model (27 August 2026): every permission
+  // belongs to one domain — identity, org, hr, finance, operations or
+  // governance. A grantor role (Managing Director, Branch Manager, Human
+  // Resources Manager) may only delegate permissions in the domains its
+  // DELEGATION_RULES entry allows (see src/identity/delegation). Managing
+  // Director and any holder of identity.user.manage may delegate every
+  // domain; Branch Manager is limited to "operations" within its own
+  // branch scope; Human Resources Manager to "hr" within its own scope.
+  domain      String  @default("general") @db.VarChar(30)
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String @map("user_id")
+  roleId String @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// FR-USER-06: "assignment of one or more roles, AND specific permissions, to
+// a user" — a direct grant on top of whatever the user's roles already
+// carry, for the rare case a permission needs to be given to one person
+// without creating or editing a role. Additive only: there is no direct-deny
+// override here, matching how RolePermission has no deny concept either.
+model UserPermission {
+  userId       String @map("user_id")
+  permissionId String @map("permission_id")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@map("user_permissions")
+}
+
+model UserScope {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  companyId    String   @map("company_id") // logical ref -> Organization Service companies.id
+  branchId     String?  @map("branch_id") // logical ref -> Organization Service branches.id; null = company-wide
+  departmentId String?  @map("department_id") // logical ref -> Organization Service departments.id; FR-USER-04
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyId])
+  @@map("user_scopes")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ============================ Organization Service =============================
+
+enum CompanyStatus {
+  active
+  inactive
+}
+
+// FR-COMP-03: a non-root company is either a majority-owned subsidiary or a
+// minority-owned associate/affiliate — both hang off parentCompanyId the
+// same way, but only this field says which kind of relationship it is.
+enum CompanyRelationship {
+  subsidiary
+  associate
+}
+
+model Company {
+  id                 String               @id @default(uuid())
+  parentCompanyId    String?              @map("parent_company_id")
+  relationshipType   CompanyRelationship? @map("relationship_type") // null for the root holding company
+  ownershipPercent   Decimal?             @map("ownership_percent") @db.Decimal(5, 2) // FR-COMP-05
+  name               String               @db.VarChar(255)
+  registrationNumber String?              @map("registration_number") @db.VarChar(100)
+  taxId              String?              @map("tax_id") @db.VarChar(100)
+  address            String?
+  contactEmail       String?              @map("contact_email") @db.VarChar(255)
+  contactPhone       String?              @map("contact_phone") @db.VarChar(30)
+  logoUrl            String?              @map("logo_url") @db.VarChar(500)
+  currency           String               @default("UGX") @db.Char(3)
+  financialYearStart DateTime             @map("financial_year_start") @db.Date
+  status             CompanyStatus        @default(active)
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  parent       Company?     @relation("CompanyHierarchy", fields: [parentCompanyId], references: [id])
+  subsidiaries Company[]    @relation("CompanyHierarchy")
+  branches     Branch[]
+  departments  Department[]
+  orders       Order[]
+
+  @@index([parentCompanyId])
+  @@map("companies")
+}
+
+enum BranchStatus {
+  active
+  inactive
+}
+
+model Branch {
+  id           String       @id @default(uuid())
+  companyId    String       @map("company_id")
+  name         String       @db.VarChar(255)
+  address      String?
+  contactPhone String?      @map("contact_phone") @db.VarChar(30)
+  status       BranchStatus @default(active)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  // Storefront group catalogue (29 August 2026): products a branch
+  // produces / stocks / fulfils, and the customers whose home branch this
+  // is. Both back-relations are optional on the other side.
+  products  Product[]
+  customers Customer[]
+
+  @@index([companyId])
+  @@map("branches")
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  name        String   @db.VarChar(150)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("departments")
+}
+
+// ============================== Employee Service ===============================
+// Sprint 3 (06_User Stories, EPIC-05). Logical (no-FK) company_id/branch_id/
+// department_id references to the Organization Service, per 08_Database
+// Design Document, Section 11 — validated at write time, not DB-enforced.
+
+enum EmployeeStatus {
+  active
+  inactive
+}
+
+model Employee {
+  id                      String         @id @default(uuid())
+  companyId               String         @map("company_id")
+  branchId                String?        @map("branch_id")
+  departmentId            String?        @map("department_id")
+  // HR module deepening (19 August 2026): logical (no-FK, same convention
+  // as every other cross-service reference in this schema) link to the
+  // Identity Service's User, for employees who also hold a system login.
+  // Nullable — most seeded Employee records represent HR data for staff
+  // who never log into this system at all, matching how Expense/Asset/
+  // Project already distinguish "the User who acted" from "the Employee
+  // record it concerns." This is what makes genuine self-service (clock
+  // in/out, apply for your own leave, submit your own self-assessment)
+  // possible below, where none existed before this pass.
+  userId                  String?        @unique @map("user_id")
+  employeeNumber          String         @map("employee_number") @db.VarChar(50)
+  firstName               String         @map("first_name") @db.VarChar(100)
+  lastName                String         @map("last_name") @db.VarChar(100)
+  nationalId              String?        @map("national_id") @db.VarChar(50)
+  jobTitle                String?        @map("job_title") @db.VarChar(150)
+  jobDescription          String?        @map("job_description") // FR-EMP-02
+  employmentStartDate     DateTime       @map("employment_start_date") @db.Date
+  employmentEndDate       DateTime?      @map("employment_end_date") @db.Date
+  contractType            String?        @map("contract_type") @db.VarChar(50)
+  qualifications          String?        @map("qualifications") // FR-EMP-03: freeform — degrees, skills, certifications
+  nextOfKinName           String?        @map("next_of_kin_name") @db.VarChar(150)
+  nextOfKinPhone          String?        @map("next_of_kin_phone") @db.VarChar(30)
+  emergencyContactName    String?        @map("emergency_contact_name") @db.VarChar(150)
+  emergencyContactPhone   String?        @map("emergency_contact_phone") @db.VarChar(30)
+  bankName                String?        @map("bank_name") @db.VarChar(150)
+  bankAccountNumber       String?        @map("bank_account_number") @db.VarChar(255)
+  taxIdentificationNumber String?        @map("tax_identification_number") @db.VarChar(255)
+  documentReference       String?        @map("document_reference") @db.VarChar(150) // "Employee documents": a text reference, not a file upload — same deferred object-storage gap noted throughout this project
+  shiftId                 String?        @map("shift_id") // logical ref -> shifts.id (Attendance module below)
+  // Payroll (28 August 2026): monthly gross employment income, the basis for
+  // the PAYE / NSSF calculation. Nullable — an employee with no gross set is
+  // skipped by a payroll run.
+  grossSalary             Decimal?       @map("gross_salary") @db.Decimal(18, 2)
+  payFrequency            String?        @map("pay_frequency") @db.VarChar(20) // 'monthly' assumed when null
+  status                  EmployeeStatus @default(active)
+  createdAt               DateTime       @default(now()) @map("created_at")
+  updatedAt               DateTime       @updatedAt @map("updated_at")
+
+  employmentHistory EmployeeEmploymentHistory[]
+
+  @@unique([companyId, employeeNumber])
+  @@index([companyId])
+  @@index([branchId])
+  @@map("employees")
+}
+
+// "Employment history": Sprint 3 deliberately modeled only one current
+// position with a start/end date, documented as a reasonable proxy at
+// "Should" priority. This pass finally builds the real thing — a proper
+// history table, populated going forward whenever an employee's job
+// title/department/branch changes (see EmployeesService.update in
+// mbms/README.md's HR Module Deepening section for exactly when a row is
+// appended), not backfilled for pre-existing employees since this
+// codebase never captured that data.
+model EmployeeEmploymentHistory {
+  id           String    @id @default(uuid())
+  employeeId   String    @map("employee_id")
+  jobTitle     String?   @map("job_title") @db.VarChar(150)
+  departmentId String?   @map("department_id")
+  branchId     String?   @map("branch_id")
+  startDate    DateTime  @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("employee_employment_history")
+}
+
+// ============================== Recruitment Service ===============================
+// HR module deepening (19 August 2026), against the user's own Recruitment
+// bullet list: job vacancies, advertisements, applications, applicant
+// database, CV management, shortlisting, interviews, interview scoring,
+// recruitment approval, employment offers, onboarding. "Applicant
+// database" is the applications list itself, not a separate CRM table;
+// "job advertisements" is the vacancy record once its status is `open`
+// (no separate posting/channel-tracking entity); "CV management" is a
+// text cvReference, the same deferred-object-storage pattern already used
+// throughout this project for documents.
+
+enum VacancyStatus {
+  draft
+  pending_approval
+  open
+  on_hold
+  closed
+}
+
+model JobVacancy {
+  id                String        @id @default(uuid())
+  companyId         String        @map("company_id")
+  branchId          String?       @map("branch_id")
+  departmentId      String?       @map("department_id")
+  title             String        @db.VarChar(200)
+  description       String?
+  employmentType    String?       @map("employment_type") @db.VarChar(50) // freeform: full_time/part_time/contract, matching Employee.contractType's own freeform convention
+  numberOfPositions Int           @default(1) @map("number_of_positions")
+  status            VacancyStatus @default(draft)
+  postedDate        DateTime?     @map("posted_date") @db.Date
+  closingDate       DateTime?     @map("closing_date") @db.Date
+  createdBy         String        @map("created_by")
+  approvedBy        String?       @map("approved_by")
+  approvedAt        DateTime?     @map("approved_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  applications JobApplication[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("job_vacancies")
+}
+
+enum ApplicationStatus {
+  applied
+  shortlisted
+  interview_scheduled
+  interviewed
+  offered
+  hired
+  rejected
+}
+
+model JobApplication {
+  id              String            @id @default(uuid())
+  vacancyId       String            @map("vacancy_id")
+  applicantName   String            @map("applicant_name") @db.VarChar(200)
+  applicantEmail  String            @map("applicant_email") @db.VarChar(255)
+  applicantPhone  String?           @map("applicant_phone") @db.VarChar(30)
+  cvReference     String?           @map("cv_reference") @db.VarChar(150) // "CV management": a text reference, not a file upload
+  coverNote       String?           @map("cover_note")
+  status          ApplicationStatus @default(applied)
+  rejectionReason String?           @map("rejection_reason")
+  appliedAt       DateTime          @default(now()) @map("applied_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  vacancy    JobVacancy  @relation(fields: [vacancyId], references: [id])
+  interviews Interview[]
+  offer      JobOffer?
+
+  @@index([vacancyId])
+  @@index([status])
+  @@map("job_applications")
+}
+
+enum InterviewStatus {
+  scheduled
+  completed
+  cancelled
+}
+
+model Interview {
+  id                    String          @id @default(uuid())
+  applicationId         String          @map("application_id")
+  scheduledAt           DateTime        @map("scheduled_at")
+  interviewerEmployeeId String?         @map("interviewer_employee_id") // logical ref -> employees.id
+  mode                  String?         @db.VarChar(50) // freeform: in_person/phone/video
+  status                InterviewStatus @default(scheduled)
+  score                 Int?            @db.SmallInt // "Interview scoring": 0-100, filled in once status = completed
+  notes                 String?
+  createdBy             String          @map("created_by")
+  createdAt             DateTime        @default(now()) @map("created_at")
+
+  application JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("interviews")
+}
+
+enum OfferStatus {
+  pending
+  accepted
+  declined
+  withdrawn
+}
+
+model JobOffer {
+  id                  String      @id @default(uuid())
+  applicationId       String      @unique @map("application_id")
+  offeredSalary       Decimal     @map("offered_salary") @db.Decimal(18, 2)
+  currency            String      @db.Char(3)
+  proposedStartDate   DateTime    @map("proposed_start_date") @db.Date
+  status              OfferStatus @default(pending)
+  issuedBy            String      @map("issued_by")
+  issuedAt            DateTime    @default(now()) @map("issued_at")
+  respondedAt         DateTime?   @map("responded_at")
+  // Onboarding: set once RecruitmentService.onboard() creates the real
+  // Employee record from this accepted offer — the funnel's actual end
+  // point, closing Recruitment into Employee Management rather than
+  // leaving "onboarding" as an unlinked status flag.
+  onboardedEmployeeId String?     @map("onboarded_employee_id")
+
+  application JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("job_offers")
+}
+
+// ============================== Attendance Service =================================
+// HR module deepening (19 August 2026). Clock-in/out is genuinely
+// self-service where Employee.userId links the caller to their own
+// Employee record; otherwise (most seeded employees have no login at all,
+// same as every other module in this codebase) HR/a manager records
+// attendance on an employee's behalf via the same manage permission every
+// other admin-recorded action in this system already uses. "Shift
+// management"/"work schedules" is one Shift definition per company, not a
+// full weekly-schedule/rota builder.
+
+model Shift {
+  id           String   @id @default(uuid())
+  companyId    String   @map("company_id")
+  name         String   @db.VarChar(100)
+  startTime    String   @map("start_time") @db.VarChar(5) // "HH:MM", 24h — no separate time-of-day type in this schema's existing conventions
+  endTime      String   @map("end_time") @db.VarChar(5)
+  graceMinutes Int      @default(15) @map("grace_minutes") // arrival grace period before "late" starts counting
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  rosterEntries RosterEntry[]
+
+  @@index([companyId])
+  @@map("shifts")
+}
+
+// Shift Scheduling (28 August 2026). A roster entry places one employee on
+// one shift template for one calendar day. It starts `planned` and the
+// roster builder promotes a date range to `published` in one step, which
+// notifies the affected employees. One entry per employee per day — a
+// second assignment for the same day is rejected as a clash.
+enum RosterEntryStatus {
+  planned
+  published
+}
+
+model RosterEntry {
+  id          String            @id @default(uuid())
+  companyId   String            @map("company_id")
+  employeeId  String            @map("employee_id")
+  shiftId     String            @map("shift_id")
+  date        DateTime          @db.Date
+  status      RosterEntryStatus @default(planned)
+  note        String?
+  createdBy   String            @map("created_by")
+  publishedAt DateTime?         @map("published_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  shift Shift @relation(fields: [shiftId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([companyId])
+  @@index([date])
+  @@map("roster_entries")
+}
+
+// ======================= Payroll (28 August 2026) =======================
+// A monthly payroll run computes, per active employee with a gross salary,
+// the Uganda PAYE and NSSF figures plus any salary-advance recovery, and
+// produces a payslip. The run moves draft -> approved -> paid; paying it
+// posts a balanced journal entry to the ledger and advances each recovered
+// salary advance.
+
+enum PayrollRunStatus {
+  draft
+  approved
+  paid
+  cancelled
+}
+
+model PayrollRun {
+  id                String           @id @default(uuid())
+  companyId         String           @map("company_id")
+  periodYear        Int              @map("period_year")
+  periodMonth       Int              @map("period_month") // 1-12
+  status            PayrollRunStatus @default(draft)
+  totalGross        Decimal          @default(0) @map("total_gross") @db.Decimal(18, 2)
+  totalPaye         Decimal          @default(0) @map("total_paye") @db.Decimal(18, 2)
+  totalNssfEmployee Decimal          @default(0) @map("total_nssf_employee") @db.Decimal(18, 2)
+  totalNssfEmployer Decimal          @default(0) @map("total_nssf_employer") @db.Decimal(18, 2)
+  totalAdvances     Decimal          @default(0) @map("total_advances") @db.Decimal(18, 2)
+  totalNet          Decimal          @default(0) @map("total_net") @db.Decimal(18, 2)
+  employeeCount     Int              @default(0) @map("employee_count")
+  createdBy         String           @map("created_by")
+  approvedBy        String?          @map("approved_by")
+  approvedAt        DateTime?        @map("approved_at")
+  paidAt            DateTime?        @map("paid_at")
+  journalEntryId    String?          @map("journal_entry_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  payslips Payslip[]
+
+  @@unique([companyId, periodYear, periodMonth])
+  @@index([companyId])
+  @@map("payroll_runs")
+}
+
+model Payslip {
+  id              String   @id @default(uuid())
+  payrollRunId    String   @map("payroll_run_id")
+  employeeId      String   @map("employee_id")
+  employeeName    String   @map("employee_name") @db.VarChar(200)
+  grossSalary     Decimal  @map("gross_salary") @db.Decimal(18, 2)
+  paye            Decimal  @db.Decimal(18, 2)
+  nssfEmployee    Decimal  @map("nssf_employee") @db.Decimal(18, 2)
+  nssfEmployer    Decimal  @map("nssf_employer") @db.Decimal(18, 2)
+  advanceRecovery Decimal  @default(0) @map("advance_recovery") @db.Decimal(18, 2)
+  otherDeductions Decimal  @default(0) @map("other_deductions") @db.Decimal(18, 2)
+  netPay          Decimal  @map("net_pay") @db.Decimal(18, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+
+  @@unique([payrollRunId, employeeId])
+  @@index([employeeId])
+  @@map("payslips")
+}
+
+enum SalaryAdvanceStatus {
+  requested
+  approved
+  recovering
+  recovered
+  rejected
+  cancelled
+}
+
+model SalaryAdvance {
+  id              String              @id @default(uuid())
+  companyId       String              @map("company_id")
+  employeeId      String              @map("employee_id")
+  employeeName    String              @map("employee_name") @db.VarChar(200)
+  amount          Decimal             @db.Decimal(18, 2)
+  reason          String?
+  installments    Int                 @default(1)
+  amountRecovered Decimal             @default(0) @map("amount_recovered") @db.Decimal(18, 2)
+  status          SalaryAdvanceStatus @default(requested)
+  requestedBy     String              @map("requested_by")
+  approvedBy      String?             @map("approved_by")
+  approvedAt      DateTime?           @map("approved_at")
+  rejectionReason String?             @map("rejection_reason")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@map("salary_advances")
+}
+
+enum AttendanceStatus {
+  present
+  late
+  absent
+  half_day
+}
+
+model AttendanceRecord {
+  id              String           @id @default(uuid())
+  employeeId      String           @map("employee_id")
+  companyId       String           @map("company_id")
+  date            DateTime         @db.Date
+  clockInTime     DateTime?        @map("clock_in_time")
+  clockOutTime    DateTime?        @map("clock_out_time")
+  status          AttendanceStatus @default(present)
+  lateMinutes     Int              @default(0) @map("late_minutes")
+  overtimeMinutes Int              @default(0) @map("overtime_minutes")
+  notes           String?
+  recordedBy      String           @map("recorded_by") // logical ref -> users.id — the caller (self, or HR/manager recording on the employee's behalf)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([companyId])
+  @@map("attendance_records")
+}
+
+// ============================== Leave Service =======================================
+// HR module deepening (19 August 2026). Five leave types, fixed by the
+// business (an enum, not a configurable lookup table — the same "the
+// domain is fixed, don't over-generalize" judgment already applied to
+// AccountType/AssetStatus elsewhere in this schema). Single-step approval
+// (submitted -> approved/rejected) — this project's two-step expense
+// approval was justified by a source workflow document explicitly naming
+// two steps; no such document exists for leave, so the simpler, more
+// common single-manager-approval pattern was used instead.
+
+enum LeaveType {
+  annual
+  sick
+  maternity
+  paternity
+  emergency
+}
+
+enum LeaveApplicationStatus {
+  submitted
+  approved
+  rejected
+  cancelled
+}
+
+// One row per employee/leaveType/year — entitledDays is the year's
+// allotment, usedDays increments only when an application for that
+// type+year is approved (not on submission), so a pending application
+// never falsely reduces what's actually still available.
+model LeaveBalance {
+  id           String    @id @default(uuid())
+  employeeId   String    @map("employee_id")
+  leaveType    LeaveType @map("leave_type")
+  year         Int
+  entitledDays Int       @map("entitled_days")
+  usedDays     Int       @default(0) @map("used_days")
+
+  @@unique([employeeId, leaveType, year])
+  @@index([employeeId])
+  @@map("leave_balances")
+}
+
+model LeaveApplication {
+  id              String                 @id @default(uuid())
+  employeeId      String                 @map("employee_id")
+  companyId       String                 @map("company_id")
+  leaveType       LeaveType              @map("leave_type")
+  startDate       DateTime               @map("start_date") @db.Date
+  endDate         DateTime               @map("end_date") @db.Date
+  daysRequested   Int                    @map("days_requested")
+  reason          String?
+  status          LeaveApplicationStatus @default(submitted)
+  submittedBy     String                 @map("submitted_by") // logical ref -> users.id
+  approvedBy      String?                @map("approved_by")
+  approvedAt      DateTime?              @map("approved_at")
+  rejectionReason String?                @map("rejection_reason")
+  createdAt       DateTime               @default(now()) @map("created_at")
+
+  @@index([employeeId])
+  @@index([companyId])
+  @@index([status])
+  @@map("leave_applications")
+}
+
+// ============================== Performance Service ==================================
+// HR module deepening (19 August 2026). "Employee objectives" and "KPIs"
+// are modeled as one Objective entity — the same underlying concept
+// (a measurable goal set for an employee within a review cycle) named two
+// ways in the request, not two separate tables. A review cycle is the
+// same kind of bounded time period FinancialPeriod already models for
+// Accounting, applied here to performance instead.
+
+enum ReviewCycleStatus {
+  open
+  closed
+}
+
+model PerformanceReviewCycle {
+  id        String            @id @default(uuid())
+  companyId String            @map("company_id")
+  name      String            @db.VarChar(100) // e.g. "2026 H2 Review"
+  startDate DateTime          @map("start_date") @db.Date
+  endDate   DateTime          @map("end_date") @db.Date
+  status    ReviewCycleStatus @default(open)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  objectives PerformanceObjective[]
+  reviews    PerformanceReview[]
+
+  @@index([companyId])
+  @@map("performance_review_cycles")
+}
+
+enum ObjectiveStatus {
+  pending
+  achieved
+  not_achieved
+}
+
+model PerformanceObjective {
+  id          String          @id @default(uuid())
+  cycleId     String          @map("cycle_id")
+  employeeId  String          @map("employee_id")
+  title       String          @db.VarChar(200)
+  description String?
+  weight      Int?            @db.SmallInt // relative importance, 0-100; optional — not every objective needs formal weighting
+  targetValue String?         @map("target_value") @db.VarChar(100) // freeform: "95% on-time delivery", "UGX 50M sales" — a KPI's target, kept freeform rather than forcing every objective into one numeric shape
+  status      ObjectiveStatus @default(pending)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  cycle PerformanceReviewCycle @relation(fields: [cycleId], references: [id])
+
+  @@index([cycleId])
+  @@index([employeeId])
+  @@map("performance_objectives")
+}
+
+enum PerformanceReviewStatus {
+  self_assessment_pending
+  manager_review_pending
+  completed
+}
+
+model PerformanceReview {
+  id                     String                  @id @default(uuid())
+  cycleId                String                  @map("cycle_id")
+  employeeId             String                  @map("employee_id")
+  companyId              String                  @map("company_id")
+  managerEmployeeId      String?                 @map("manager_employee_id")
+  selfAssessment         String?                 @map("self_assessment")
+  selfAssessmentAt       DateTime?               @map("self_assessment_at")
+  managerAssessment      String?                 @map("manager_assessment")
+  managerRating          Int?                    @map("manager_rating") @db.SmallInt // 1-5
+  promotionRecommended   Boolean                 @default(false) @map("promotion_recommended")
+  trainingRecommendation String?                 @map("training_recommendation")
+  status                 PerformanceReviewStatus @default(self_assessment_pending)
+  completedAt            DateTime?               @map("completed_at")
+  createdAt              DateTime                @default(now()) @map("created_at")
+
+  cycle PerformanceReviewCycle @relation(fields: [cycleId], references: [id])
+
+  @@unique([cycleId, employeeId])
+  @@index([employeeId])
+  @@index([companyId])
+  @@map("performance_reviews")
+}
+
+// ============================== Customer Service =================================
+// Sprint 4 (06_User Stories, EPIC-06). Logical (no-FK) company_id reference
+// to the Organization Service, per 08_Database Design Document, Section 6.
+
+enum CustomerStatus {
+  active
+  inactive
+}
+
+model Customer {
+  id               String         @id @default(uuid())
+  companyId        String         @map("company_id")
+  name             String         @db.VarChar(255)
+  category         String?        @db.VarChar(100)
+  contactEmail     String?        @map("contact_email") @db.VarChar(255)
+  contactPhone     String?        @map("contact_phone") @db.VarChar(30)
+  address          String?
+  creditLimit      Decimal?       @map("credit_limit") @db.Decimal(18, 2)
+  paymentTermsDays Int?           @map("payment_terms_days")
+  status           CustomerStatus @default(active)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  // Customer Storefront (Sprint 16): a customer portal login is per-account
+  // (one B2B customer record = one login), not per employee-at-customer —
+  // mirrors User's own lockout fields exactly (failedLoginAttempts/
+  // lockedUntil), but on a separate CustomerRefreshToken table since
+  // RefreshToken hard-FKs to User.
+  accountNumber       String?   @unique @map("account_number") @db.VarChar(30)
+  passwordHash        String?   @map("password_hash") @db.VarChar(255)
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+
+  // Self-service auth (29 August 2026): whether the account was created by
+  // the customer signing up (vs. by staff in the CRM). Google-linked
+  // accounts have no passwordHash.
+  selfRegistered Boolean @default(false) @map("self_registered")
+  googleLinked   Boolean @default(false) @map("google_linked")
+
+  // Storefront group catalogue (29 August 2026): the branch of the
+  // customer's own subsidiary (companyId) that serves this account — shown
+  // on the storefront so the customer always knows which subsidiary and
+  // branch is "theirs". Nullable: staff-created and older accounts may have
+  // none set.
+  homeBranchId String? @map("home_branch_id")
+
+  // Content localisation for customer-typed profile fields (29 August 2026):
+  // `name` and `address` are stored canonically in English (normalised on
+  // write via ContentTranslationService). When the customer typed them in
+  // another language the source language and their exact original wording are
+  // kept here, so an admin always reads English and the storefront can show
+  // the customer their own words back — the same shape DeliveryAddress uses.
+  sourceLanguage  String  @default("en") @map("source_language") @db.VarChar(12)
+  nameOriginal    String? @map("name_original")
+  addressOriginal String? @map("address_original")
+
+  deliveryAddresses   DeliveryAddress[]
+  refreshTokens       CustomerRefreshToken[]
+  passwordResetTokens CustomerPasswordResetToken[]
+  homeBranch          Branch?                      @relation(fields: [homeBranchId], references: [id])
+
+  @@index([companyId])
+  @@index([homeBranchId])
+  @@map("customers")
+}
+
+// Customer self-service password reset (29 August 2026). A one-time opaque
+// token, stored hashed, ~30-minute expiry. There is no SMTP/SMS in this
+// build, so the plain token is returned to the caller in dev (documented
+// seam, like the deferred payment gateway and in-app-only notifications);
+// a real deployment emails / SMSes a link instead.
+model CustomerPasswordResetToken {
+  id         String    @id @default(uuid())
+  customerId String    @map("customer_id")
+  tokenHash  String    @map("token_hash") @db.VarChar(255)
+  expiresAt  DateTime  @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([tokenHash])
+  @@map("customer_password_reset_tokens")
+}
+
+// ============================== Supplier Service =================================
+// Sprint 4 (06_User Stories, EPIC-07). Logical (no-FK) company_id reference
+// to the Organization Service, per 08_Database Design Document, Section 7.
+
+enum SupplierStatus {
+  active
+  inactive
+  blacklisted
+}
+
+model Supplier {
+  id                 String         @id @default(uuid())
+  companyId          String         @map("company_id")
+  name               String         @db.VarChar(255)
+  category           String?        @db.VarChar(100)
+  contactEmail       String?        @map("contact_email") @db.VarChar(255)
+  contactPhone       String?        @map("contact_phone") @db.VarChar(30)
+  address            String?
+  taxId              String?        @map("tax_id") @db.VarChar(100)
+  contractReference  String?        @map("contract_reference") @db.VarChar(150) // FR-SUPP-02
+  contractExpiryDate DateTime?      @map("contract_expiry_date") @db.Date // FR-SUPP-02
+  bankName           String?        @map("bank_name") @db.VarChar(150)
+  bankAccountNumber  String?        @map("bank_account_number") @db.VarChar(255)
+  status             SupplierStatus @default(active)
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  @@index([companyId])
+  @@map("suppliers")
+}
+
+// ======================== Audit & Reporting (in-process) ==========================
+// FR-AUDIT-01–03 (06_User Stories, EPIC-10). The approved architecture
+// (07_System Design Document v2.0, Section 9) populates this table
+// exclusively by consuming Kafka domain events published by every other
+// service — no Kafka exists in this proof-of-concept, so each service calls
+// AuditService.record() directly and synchronously instead. Column shape
+// matches 08_Database Design Document, Section 10.1 exactly, so swapping the
+// write path for a real Kafka consumer later doesn't require a schema
+// change. Per FR-AUDIT-03, no update/delete endpoint exists anywhere for
+// this table — enforced at the application layer only (no NestJS route),
+// not yet at the database-role grant level 08_Database Design Document,
+// Section 10.1 also specifies.
+
+enum AuditAction {
+  create
+  update
+  delete
+  approve
+  access_denied
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  eventType     String      @map("event_type") @db.VarChar(150)
+  sourceService String      @map("source_service") @db.VarChar(50)
+  userId        String?     @map("user_id")
+  companyId     String?     @map("company_id")
+  entityType    String      @map("entity_type") @db.VarChar(100)
+  entityId      String?     @map("entity_id")
+  action        AuditAction
+  previousValue Json?       @map("previous_value")
+  newValue      Json?       @map("new_value")
+  ipAddress     String?     @map("ip_address") @db.VarChar(45)
+  occurredAt    DateTime    @default(now()) @map("occurred_at")
+  recordedAt    DateTime    @default(now()) @map("recorded_at")
+
+  @@index([occurredAt])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([userId])
+  @@index([companyId])
+  @@map("audit_logs")
+}
+
+// ============================== Product Service ===================================
+// Sprint 5 (06_User Stories, EPIC-08). Logical (no-FK) company_id reference
+// to the Organization Service, per 08_Database Design Document, Section 8.
+
+model ProductCategory {
+  id               String  @id @default(uuid())
+  companyId        String  @map("company_id")
+  name             String  @db.VarChar(150)
+  parentCategoryId String? @map("parent_category_id")
+
+  parent   ProductCategory?  @relation("ProductCategoryHierarchy", fields: [parentCategoryId], references: [id])
+  children ProductCategory[] @relation("ProductCategoryHierarchy")
+  products Product[]
+
+  @@index([companyId])
+  @@map("product_categories")
+}
+
+enum ProductStatus {
+  active
+  inactive
+}
+
+// FR-PROD-01: "registration of products/services" — this says which.
+enum ProductType {
+  good
+  service
+}
+
+model Product {
+  id            String        @id @default(uuid())
+  companyId     String        @map("company_id")
+  categoryId    String?       @map("category_id")
+  productCode   String        @map("product_code") @db.VarChar(50)
+  productType   ProductType   @default(good) @map("product_type")
+  name          String        @db.VarChar(255)
+  description   String?
+  unitOfMeasure String?       @map("unit_of_measure") @db.VarChar(30)
+  barcode       String?       @db.VarChar(100)
+  status        ProductStatus @default(active)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // Customer Storefront (Sprint 16): nullable so existing seeded products
+  // don't break — the customer catalog only lists products with a price set.
+  unitPrice     Decimal? @map("unit_price") @db.Decimal(18, 2)
+  stockQuantity Int?     @map("stock_quantity")
+
+  // Inventory section (28 August 2026): the re-order threshold the Admin
+  // "Inventory" screen uses to flag a product LOW / OUT of stock. Null means
+  // "no threshold set" — the product is only ever flagged OUT (at zero).
+  reorderPoint Int? @map("reorder_point")
+
+  // Storefront group catalogue (29 August 2026): the branch of the owning
+  // subsidiary (companyId) that produces / stocks / fulfils this product.
+  // Null = company-wide / head-office listing. The customer storefront shows
+  // every subsidiary's products in one shop, each tagged with its company
+  // and this branch.
+  branchId String? @map("branch_id")
+
+  category       ProductCategory? @relation(fields: [categoryId], references: [id])
+  branch         Branch?          @relation(fields: [branchId], references: [id])
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
+
+  @@unique([companyId, productCode])
+  @@index([companyId])
+  @@index([branchId])
+  @@map("products")
+}
+
+// Inventory section (28 August 2026). The kind of stock change a movement
+// records: goods received in, goods issued out, or a physical-count
+// correction. Company-level only — per-branch stock and inter-branch
+// transfers are Warehouse Management System scope (docx/20).
+enum StockMovementType {
+  receipt
+  issue
+  count
+}
+
+// Every change to Product.stockQuantity is written here as an immutable
+// movement, so the on-hand figure is always explainable and auditable
+// ("stock counts and adjustments with audit trail", 05_Business Process).
+model StockMovement {
+  id           String            @id @default(uuid())
+  companyId    String            @map("company_id")
+  productId    String            @map("product_id")
+  movementType StockMovementType @map("movement_type")
+  quantity     Int // signed delta actually applied to stock-on-hand
+  balanceAfter Int               @map("balance_after")
+  reason       String?
+  reference    String?           @db.VarChar(100)
+  createdBy    String            @map("created_by")
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([companyId])
+  @@index([productId])
+  @@map("stock_movements")
+}
+
+// ============================== Accounting Service ==============================
+// Basic accounting (06_User Stories, EPIC-09). Logical company_id reference
+// to the Organization Service, per 08_Database Design Document, Section 9.
+
+enum AccountType {
+  asset
+  liability
+  equity
+  revenue
+  expense
+}
+
+// Dashboard deepening (19 August 2026): the dashboard KPI list this system
+// was asked to expose — cash position, bank balances, outstanding
+// receivables, outstanding payables — has no way to be told apart from any
+// other asset/liability account using accountType alone (e.g. "Fixed
+// Assets" and "Cash and Bank" are both plain `asset` accounts). This
+// optional tag identifies the handful of accounts a dashboard should sum
+// for those specific tiles, without forcing every chart of accounts to
+// adopt a rigid sub-classification scheme it doesn't need. Null means "not
+// one of these four" — the overwhelming majority of accounts.
+enum AccountSubType {
+  cash
+  bank
+  receivable
+  payable
+}
+
+model Account {
+  id              String          @id @default(uuid())
+  companyId       String          @map("company_id")
+  accountCode     String          @map("account_code") @db.VarChar(20)
+  accountName     String          @map("account_name") @db.VarChar(150)
+  accountType     AccountType     @map("account_type")
+  accountSubType  AccountSubType? @map("account_sub_type")
+  parentAccountId String?         @map("parent_account_id")
+  isActive        Boolean         @default(true) @map("is_active")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  parent                                 Account?                    @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  children                               Account[]                   @relation("AccountHierarchy")
+  journalEntryItems                      JournalEntryItem[]
+  expenses                               Expense[]
+  recurringJournalEntryItems             RecurringJournalEntryItem[]
+  assetsAsFixedAccount                   Asset[]                     @relation("AssetFixedAccount")
+  assetsAsDepreciationExpenseAccount     Asset[]                     @relation("AssetDepreciationExpenseAccount")
+  assetsAsAccumulatedDepreciationAccount Asset[]                     @relation("AssetAccumulatedDepreciationAccount")
+  budgets                                Budget[]
+
+  @@unique([companyId, accountCode])
+  @@index([companyId])
+  @@map("accounts")
+}
+
+enum FinancialPeriodStatus {
+  open
+  closed
+}
+
+model FinancialPeriod {
+  id         String                @id @default(uuid())
+  companyId  String                @map("company_id")
+  periodName String                @map("period_name") @db.VarChar(50)
+  startDate  DateTime              @map("start_date") @db.Date
+  endDate    DateTime              @map("end_date") @db.Date
+  status     FinancialPeriodStatus @default(open)
+  closedAt   DateTime?             @map("closed_at")
+  closedBy   String?               @map("closed_by")
+
+  journalEntries JournalEntry[]
+
+  @@index([companyId])
+  @@map("financial_periods")
+}
+
+enum JournalEntryStatus {
+  draft
+  posted
+}
+
+// Financial Module deepening (19 August 2026): distinguishes a normal
+// posted entry from a period-end adjusting entry (accruals, prepayments,
+// depreciation catch-ups — content-wise no different from a standard
+// entry, this is a classification tag, not a different posting mechanism)
+// and a closing entry (system-generated when a period is closed, zeroing
+// revenue/expense into Retained Earnings — see FinancialPeriodsService).
+enum JournalEntryType {
+  standard
+  adjusting
+  closing
+}
+
+model JournalEntry {
+  id                String             @id @default(uuid())
+  companyId         String             @map("company_id")
+  entryNumber       String             @map("entry_number") @db.VarChar(50)
+  entryDate         DateTime           @map("entry_date") @db.Date
+  description       String?
+  financialPeriodId String             @map("financial_period_id")
+  status            JournalEntryStatus @default(draft)
+  entryType         JournalEntryType   @default(standard) @map("entry_type")
+  createdBy         String             @map("created_by")
+  postedAt          DateTime?          @map("posted_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  financialPeriod FinancialPeriod    @relation(fields: [financialPeriodId], references: [id])
+  items           JournalEntryItem[]
+
+  @@unique([companyId, entryNumber])
+  @@index([companyId])
+  @@index([financialPeriodId])
+  @@map("journal_entries")
+}
+
+model JournalEntryItem {
+  id             String  @id @default(uuid())
+  journalEntryId String  @map("journal_entry_id")
+  accountId      String  @map("account_id")
+  debitAmount    Decimal @default(0) @map("debit_amount") @db.Decimal(18, 2)
+  creditAmount   Decimal @default(0) @map("credit_amount") @db.Decimal(18, 2)
+  description    String?
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("journal_entry_items")
+}
+
+// ============================== Expense Management ===============================
+// Sprint 9 — the first Phase 2 module (04_Software Requirements Specification,
+// Section 12 names Expenses explicitly under Phase 2, not Phase 1). Built
+// against the claim workflow morise.docx, Section 22/48 and
+// 05_Business Process Document, Section 6.4 already describe: "Expense
+// Incurred -> Receipt Uploaded -> Manager Approval -> Finance Approval ->
+// Payment/Reimbursement -> Posted to Accounting". Receipt *upload* is out —
+// same object-storage gap already noted for Company logos, Employee/Supplier
+// documents — a freeform receiptReference stands in for it, same pattern as
+// Supplier.contractReference. Payment and posting-to-accounting are combined
+// into one pay() action rather than separate steps, since this
+// proof-of-concept has no real payment/disbursement infrastructure either.
+enum ExpenseStatus {
+  submitted
+  manager_approved
+  finance_approved
+  rejected
+  paid
+}
+
+model Expense {
+  id                String        @id @default(uuid())
+  companyId         String        @map("company_id")
+  branchId          String?       @map("branch_id")
+  departmentId      String?       @map("department_id")
+  projectId         String?       @map("project_id") // Sprint 12: optional attribution to a project, feeds its actual-cost/profitability figures
+  submittedBy       String        @map("submitted_by") // logical ref -> users.id (the claimant)
+  category          String?       @db.VarChar(100) // freeform expense category, e.g. "Travel", "Office Supplies"
+  description       String?
+  amount            Decimal       @db.Decimal(18, 2)
+  currency          String        @db.Char(3)
+  expenseDate       DateTime      @map("expense_date") @db.Date
+  receiptReference  String?       @map("receipt_reference") @db.VarChar(150)
+  expenseAccountId  String        @map("expense_account_id") // Account of type "expense" this claim posts against
+  status            ExpenseStatus @default(submitted)
+  managerApprovedBy String?       @map("manager_approved_by")
+  managerApprovedAt DateTime?     @map("manager_approved_at")
+  financeApprovedBy String?       @map("finance_approved_by")
+  financeApprovedAt DateTime?     @map("finance_approved_at")
+  rejectedBy        String?       @map("rejected_by")
+  rejectedAt        DateTime?     @map("rejected_at")
+  rejectionReason   String?       @map("rejection_reason")
+  paidBy            String?       @map("paid_by")
+  paidAt            DateTime?     @map("paid_at")
+  journalEntryId    String?       @map("journal_entry_id") // set once pay() posts the journal entry
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  expenseAccount Account  @relation(fields: [expenseAccountId], references: [id])
+  project        Project? @relation(fields: [projectId], references: [id])
+
+  @@index([companyId])
+  @@index([submittedBy])
+  @@index([status])
+  @@map("expenses")
+}
+
+// ============================== Full Accounting (Sprint 10) ======================
+// FR-ACC-07 ("recurring and adjusting journal entries") — flagged "Could
+// priority, not started" since the module was first built. A recurring
+// entry is a saved line-item template, not a cron-scheduled job (no
+// scheduler infrastructure exists in this proof-of-concept, the same class
+// of honest gap already noted for Notifications) — generate() clones the
+// template into a new DRAFT JournalEntry that goes through the exact same
+// balance-validation-at-post-time path (POST .../journal-entries/{id}/post)
+// every manually-created entry already does, rather than duplicating that
+// logic here.
+model RecurringJournalEntry {
+  id              String    @id @default(uuid())
+  companyId       String    @map("company_id")
+  name            String    @db.VarChar(150)
+  description     String?
+  isActive        Boolean   @default(true) @map("is_active")
+  createdBy       String    @map("created_by")
+  lastGeneratedAt DateTime? @map("last_generated_at")
+  timesGenerated  Int       @default(0) @map("times_generated")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  items RecurringJournalEntryItem[]
+
+  @@index([companyId])
+  @@map("recurring_journal_entries")
+}
+
+model RecurringJournalEntryItem {
+  id                      String  @id @default(uuid())
+  recurringJournalEntryId String  @map("recurring_journal_entry_id")
+  accountId               String  @map("account_id")
+  debitAmount             Decimal @default(0) @map("debit_amount") @db.Decimal(18, 2)
+  creditAmount            Decimal @default(0) @map("credit_amount") @db.Decimal(18, 2)
+  description             String?
+
+  recurringJournalEntry RecurringJournalEntry @relation(fields: [recurringJournalEntryId], references: [id], onDelete: Cascade)
+  account               Account               @relation(fields: [accountId], references: [id])
+
+  @@index([recurringJournalEntryId])
+  @@map("recurring_journal_entry_items")
+}
+
+// ============================== Financial Module deepening (19 August 2026) =========
+// Requested directly against a full "Financial Module" feature list — General
+// Ledger gaps (account reconciliation, adjusting/closing entries — see
+// JournalEntryType above and Budget below), and two entirely new subledgers,
+// Accounts Receivable and Accounts Payable. AR/AP have been this project's
+// single most consistently-deferred gap (Sales/Invoicing and Procurement have
+// been redirected away from since Sprint 6/7 — see mbms/README.md, "Sprint
+// 6/7/8"), but scoped here strictly to the FINANCIAL side the request
+// actually asks for: invoices, payments, credit/debit notes, aging,
+// statements. Full Sales (quotations, order management) and Procurement
+// (purchase requisitions, goods-received notes, warehouse/inventory
+// integration) remain out of scope and undeferred by this pass — building an
+// invoice and posting it to the ledger doesn't need either.
+
+// CORRECTION (same day, before this migration's tables were ever read by
+// any service code): this section originally also defined CustomerInvoice/
+// CustomerInvoiceItem/CustomerPayment/CustomerPaymentApplication. Before
+// writing the service layer, a check of the live database (`\dt`) turned up
+// `invoices`, `orders`, `order_items`, `payments`, `payment_allocations` —
+// a complete, already-working Order -> Invoice -> Payment/PaymentAllocation
+// system (see the Order/Invoice/Payment/PaymentAllocation models below,
+// under "Customer Storefront"), built concurrently by a different session
+// while this pass was running. Those four models would have been a second,
+// competing invoicing concept for the exact same domain. Deleted before any
+// code referenced them; AR below reads the real Invoice/Payment/
+// PaymentAllocation/Order models instead, and only adds what's genuinely
+// missing there: Credit/Debit notes, a staff-facing (not customer-portal)
+// aging report and statement view, payment reminders, and AR
+// reconciliation. See mbms/README.md, "Financial Module Deepening," for
+// the full account of this correction.
+
+enum CreditDebitNoteStatus {
+  issued
+  applied
+}
+
+model CustomerCreditNote {
+  id                 String                @id @default(uuid())
+  companyId          String                @map("company_id")
+  customerId         String                @map("customer_id")
+  creditNoteNumber   String                @map("credit_note_number") @db.VarChar(50)
+  creditDate         DateTime              @map("credit_date") @db.Date
+  amount             Decimal               @db.Decimal(18, 2)
+  reason             String?
+  appliedToInvoiceId String?               @map("applied_to_invoice_id") // logical ref -> invoices.id (the real Invoice model, "Customer Storefront" section below)
+  status             CreditDebitNoteStatus @default(issued)
+  financialPeriodId  String                @map("financial_period_id")
+  journalEntryId     String?               @map("journal_entry_id")
+  createdBy          String                @map("created_by")
+  createdAt          DateTime              @default(now()) @map("created_at")
+
+  @@unique([companyId, creditNoteNumber])
+  @@index([companyId])
+  @@index([customerId])
+  @@map("customer_credit_notes")
+}
+
+// AR's own bullet list names both credit AND debit notes; AP's list names
+// only credit notes — mirrored exactly, not symmetrized, below.
+model CustomerDebitNote {
+  id                String   @id @default(uuid())
+  companyId         String   @map("company_id")
+  customerId        String   @map("customer_id")
+  debitNoteNumber   String   @map("debit_note_number") @db.VarChar(50)
+  debitDate         DateTime @map("debit_date") @db.Date
+  amount            Decimal  @db.Decimal(18, 2)
+  reason            String?
+  financialPeriodId String   @map("financial_period_id")
+  journalEntryId    String?  @map("journal_entry_id")
+  createdBy         String   @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([companyId, debitNoteNumber])
+  @@index([companyId])
+  @@index([customerId])
+  @@map("customer_debit_notes")
+}
+
+enum APInvoiceStatus {
+  draft
+  pending_approval
+  approved
+  partially_paid
+  paid
+  overdue
+  void
+}
+
+// "Supplier invoices" and "Purchase invoices" are the same underlying
+// concept named twice in the request (the same treatment Performance's
+// "Employee objectives"/"KPIs" already got) — one model, not two.
+model SupplierInvoice {
+  id                String          @id @default(uuid())
+  companyId         String          @map("company_id")
+  supplierId        String          @map("supplier_id")
+  invoiceNumber     String          @map("invoice_number") @db.VarChar(50)
+  invoiceDate       DateTime        @map("invoice_date") @db.Date
+  dueDate           DateTime        @map("due_date") @db.Date
+  currency          String          @db.Char(3)
+  subtotal          Decimal         @db.Decimal(18, 2)
+  taxAmount         Decimal         @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  totalAmount       Decimal         @map("total_amount") @db.Decimal(18, 2)
+  amountPaid        Decimal         @default(0) @map("amount_paid") @db.Decimal(18, 2)
+  status            APInvoiceStatus @default(draft)
+  apAccountId       String?         @map("ap_account_id") // Account of type liability, accountSubType=payable
+  expenseAccountId  String?         @map("expense_account_id") // Account of type expense (or asset, for a capitalized purchase)
+  financialPeriodId String?         @map("financial_period_id")
+  journalEntryId    String?         @map("journal_entry_id")
+  approvedBy        String?         @map("approved_by")
+  approvedAt        DateTime?       @map("approved_at")
+  createdBy         String          @map("created_by")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  items               SupplierInvoiceItem[]
+  paymentApplications SupplierPaymentApplication[]
+
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("supplier_invoices")
+}
+
+model SupplierInvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String  @map("invoice_id")
+  description String  @db.VarChar(255)
+  quantity    Decimal @default(1) @db.Decimal(18, 4)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(18, 2)
+  lineTotal   Decimal @map("line_total") @db.Decimal(18, 2)
+
+  invoice SupplierInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("supplier_invoice_items")
+}
+
+model SupplierPayment {
+  id             String   @id @default(uuid())
+  companyId      String   @map("company_id")
+  supplierId     String   @map("supplier_id")
+  paymentDate    DateTime @map("payment_date") @db.Date
+  amount         Decimal  @db.Decimal(18, 2)
+  currency       String   @db.Char(3)
+  method         String?  @db.VarChar(50)
+  reference      String?  @db.VarChar(150)
+  bankAccountId  String?  @map("bank_account_id")
+  journalEntryId String?  @map("journal_entry_id")
+  paidBy         String   @map("paid_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  applications SupplierPaymentApplication[]
+
+  @@index([companyId])
+  @@index([supplierId])
+  @@map("supplier_payments")
+}
+
+model SupplierPaymentApplication {
+  id            String  @id @default(uuid())
+  paymentId     String  @map("payment_id")
+  invoiceId     String  @map("invoice_id")
+  amountApplied Decimal @map("amount_applied") @db.Decimal(18, 2)
+
+  payment SupplierPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice SupplierInvoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@map("supplier_payment_applications")
+}
+
+model SupplierCreditNote {
+  id                 String                @id @default(uuid())
+  companyId          String                @map("company_id")
+  supplierId         String                @map("supplier_id")
+  creditNoteNumber   String                @map("credit_note_number") @db.VarChar(50)
+  creditDate         DateTime              @map("credit_date") @db.Date
+  amount             Decimal               @db.Decimal(18, 2)
+  reason             String?
+  appliedToInvoiceId String?               @map("applied_to_invoice_id")
+  status             CreditDebitNoteStatus @default(issued)
+  financialPeriodId  String                @map("financial_period_id")
+  journalEntryId     String?               @map("journal_entry_id")
+  createdBy          String                @map("created_by")
+  createdAt          DateTime              @default(now()) @map("created_at")
+
+  @@unique([companyId, creditNoteNumber])
+  @@index([companyId])
+  @@index([supplierId])
+  @@map("supplier_credit_notes")
+}
+
+// "Account reconciliation" (General Ledger bullet): ties one account's
+// ledger balance, as of a date, to an external statement balance (a bank
+// statement, most commonly) — a real check, not just a trial-balance
+// balanced/unbalanced flag, which only proves debits=credits, not that the
+// ledger matches reality outside the system.
+enum ReconciliationStatus {
+  open
+  reconciled
+}
+
+model AccountReconciliation {
+  id               String               @id @default(uuid())
+  companyId        String               @map("company_id")
+  accountId        String               @map("account_id")
+  asOfDate         DateTime             @map("as_of_date") @db.Date
+  statementBalance Decimal              @map("statement_balance") @db.Decimal(18, 2)
+  ledgerBalance    Decimal              @map("ledger_balance") @db.Decimal(18, 2) // snapshotted at reconciliation time
+  variance         Decimal              @db.Decimal(18, 2) // statementBalance - ledgerBalance
+  notes            String?
+  status           ReconciliationStatus @default(open)
+  reconciledBy     String?              @map("reconciled_by")
+  reconciledAt     DateTime?            @map("reconciled_at")
+  createdBy        String               @map("created_by")
+  createdAt        DateTime             @default(now()) @map("created_at")
+
+  @@index([companyId])
+  @@index([accountId])
+  @@map("account_reconciliations")
+}
+
+// "Budget versus actual" (Financial Statements bullet): a per-account,
+// per-period budgeted amount — compared against actual posted activity by
+// the reports endpoint, not stored here. Distinct from Project.budget
+// (Sprint 12), which is one lump-sum figure per project, not per-account.
+model Budget {
+  id                String   @id @default(uuid())
+  companyId         String   @map("company_id")
+  financialPeriodId String   @map("financial_period_id")
+  accountId         String   @map("account_id")
+  budgetedAmount    Decimal  @map("budgeted_amount") @db.Decimal(18, 2)
+  createdBy         String   @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@unique([financialPeriodId, accountId])
+  @@index([companyId])
+  @@map("budgets")
+}
+
+// ============================== Asset Management (Sprint 11) ======================
+// Phase 2 (04_Software Requirements Specification, Section 12) — pulled forward the
+// same way Expense Management (Sprint 9) was, per Multi_Holdings_Limited_Software_
+// Development_Procedures.docx's own Sprint 11 ("Assets"). Built against the workflow
+// 05_Business Process Document, Section 6.5 and morise.docx, Section 15 already
+// described: "Purchase Approved -> Asset Registered -> Category, Location & Custodian
+// Assigned -> Depreciation Schedule Set -> Asset Active" and, for disposal,
+// "Disposal Request -> Management Approval -> Asset Inspection -> Disposal Executed
+// -> Asset Record Closed". Asset Inspection is folded into the Management Approval
+// step (an inspectionNotes field on that action) rather than a separate state, the
+// same kind of step-combining simplification Expense's pay() already made.
+
+enum AssetStatus {
+  active
+  disposal_requested
+  disposal_approved
+  disposed
+}
+
+enum DepreciationMethod {
+  none
+  straight_line
+}
+
+enum DisposalMethod {
+  sale
+  write_off
+}
+
+model Asset {
+  id                  String  @id @default(uuid())
+  companyId           String  @map("company_id")
+  branchId            String? @map("branch_id") // location
+  departmentId        String? @map("department_id")
+  assetNumber         String  @map("asset_number") @db.VarChar(50)
+  name                String  @db.VarChar(255)
+  category            String? @db.VarChar(100)
+  description         String?
+  custodianEmployeeId String? @map("custodian_employee_id") // logical ref -> employees.id
+
+  purchaseDate            DateTime           @map("purchase_date") @db.Date
+  purchaseCost            Decimal            @map("purchase_cost") @db.Decimal(18, 2)
+  accumulatedDepreciation Decimal            @default(0) @map("accumulated_depreciation") @db.Decimal(18, 2)
+  depreciationMethod      DepreciationMethod @default(none) @map("depreciation_method")
+  usefulLifeYears         Int?               @map("useful_life_years")
+  salvageValue            Decimal?           @default(0) @map("salvage_value") @db.Decimal(18, 2)
+
+  // GL linkage — all optional, since a registered asset doesn't require GL
+  // posting until depreciation/disposal is actually recorded against it.
+  assetAccountId                   String? @map("asset_account_id") // Fixed Assets (type=asset)
+  depreciationExpenseAccountId     String? @map("depreciation_expense_account_id") // type=expense
+  accumulatedDepreciationAccountId String? @map("accumulated_depreciation_account_id") // type=asset (contra-asset, modeled as a plain asset account)
+
+  insurer               String?   @db.VarChar(150)
+  insurancePolicyNumber String?   @map("insurance_policy_number") @db.VarChar(100)
+  insuranceExpiryDate   DateTime? @map("insurance_expiry_date") @db.Date
+  documentReference     String?   @map("document_reference") @db.VarChar(150) // FR-ASSET-xx: reference, not a file upload — same deferred gap as elsewhere
+
+  status AssetStatus @default(active)
+
+  disposalRequestedBy    String?         @map("disposal_requested_by")
+  disposalRequestedAt    DateTime?       @map("disposal_requested_at")
+  disposalRequestReason  String?         @map("disposal_request_reason")
+  disposalApprovedBy     String?         @map("disposal_approved_by")
+  disposalApprovedAt     DateTime?       @map("disposal_approved_at")
+  inspectionNotes        String?         @map("inspection_notes")
+  disposalMethod         DisposalMethod? @map("disposal_method")
+  disposalProceeds       Decimal?        @map("disposal_proceeds") @db.Decimal(18, 2)
+  disposedAt             DateTime?       @map("disposed_at")
+  disposalJournalEntryId String?         @map("disposal_journal_entry_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  assetAccount                   Account?                 @relation("AssetFixedAccount", fields: [assetAccountId], references: [id])
+  depreciationExpenseAccount     Account?                 @relation("AssetDepreciationExpenseAccount", fields: [depreciationExpenseAccountId], references: [id])
+  accumulatedDepreciationAccount Account?                 @relation("AssetAccumulatedDepreciationAccount", fields: [accumulatedDepreciationAccountId], references: [id])
+  maintenanceRecords             AssetMaintenanceRecord[]
+
+  @@unique([companyId, assetNumber])
+  @@index([companyId])
+  @@index([status])
+  @@map("assets")
+}
+
+model AssetMaintenanceRecord {
+  id              String   @id @default(uuid())
+  assetId         String   @map("asset_id")
+  maintenanceDate DateTime @map("maintenance_date") @db.Date
+  description     String
+  cost            Decimal? @db.Decimal(18, 2)
+  performedBy     String   @map("performed_by") // logical ref -> users.id (who logged it)
+  journalEntryId  String?  @map("journal_entry_id") // set only if cost was posted to the ledger
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@map("asset_maintenance_records")
+}
+
+// ============================== Project Management (Sprint 12) ====================
+// Phase 2 (04_Software Requirements Specification, Section 12) — pulled forward the
+// same way Expense Management (Sprint 9) and Asset Management (Sprint 11) were, per
+// Multi_Holdings_Limited_Software_Development_Procedures.docx's own Sprint 12
+// ("Projects"). Built against the workflow 05_Business Process Document, Section 6.6
+// and morise.docx, Section 17 already described: "Project Registered -> Manager &
+// Team Assigned -> Budget Allocated -> Tasks Assigned & Tracked -> Progress &
+// Expenses Recorded -> Project Reviewed for Profitability -> Project Closed".
+// "Progress & Expenses Recorded" is satisfied by reusing the existing Expense
+// Service rather than building a second expense concept: Expense gained an optional
+// projectId (see below), and a project's actual cost is the sum of its paid
+// expenses, not a new ledger of its own.
+
+enum ProjectStatus {
+  planned
+  active
+  on_hold
+  completed
+  closed
+}
+
+enum ProjectTaskStatus {
+  not_started
+  in_progress
+  done
+}
+
+enum ProjectMilestoneStatus {
+  pending
+  completed
+}
+
+model Project {
+  id                String        @id @default(uuid())
+  companyId         String        @map("company_id")
+  branchId          String?       @map("branch_id")
+  departmentId      String?       @map("department_id")
+  projectCode       String        @map("project_code") @db.VarChar(50)
+  name              String        @db.VarChar(255)
+  description       String?
+  managerEmployeeId String?       @map("manager_employee_id") // logical ref -> employees.id
+  startDate         DateTime      @map("start_date") @db.Date
+  plannedEndDate    DateTime?     @map("planned_end_date") @db.Date
+  actualEndDate     DateTime?     @map("actual_end_date") @db.Date
+  budget            Decimal       @default(0) @map("budget") @db.Decimal(18, 2)
+  revenueAmount     Decimal       @default(0) @map("revenue_amount") @db.Decimal(18, 2) // manually recorded — no invoicing module exists yet
+  status            ProjectStatus @default(planned)
+  createdBy         String        @map("created_by")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  team       ProjectTeamMember[]
+  tasks      ProjectTask[]
+  milestones ProjectMilestone[]
+  expenses   Expense[]
+
+  @@unique([companyId, projectCode])
+  @@index([companyId])
+  @@index([status])
+  @@map("projects")
+}
+
+model ProjectTeamMember {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  employeeId String   @map("employee_id") // logical ref -> employees.id
+  role       String?  @db.VarChar(100)
+  addedAt    DateTime @default(now()) @map("added_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, employeeId])
+  @@index([projectId])
+  @@map("project_team_members")
+}
+
+model ProjectTask {
+  id                   String            @id @default(uuid())
+  projectId            String            @map("project_id")
+  name                 String            @db.VarChar(255)
+  description          String?
+  assignedToEmployeeId String?           @map("assigned_to_employee_id") // logical ref -> employees.id
+  status               ProjectTaskStatus @default(not_started)
+  dueDate              DateTime?         @map("due_date") @db.Date
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_tasks")
+}
+
+model ProjectMilestone {
+  id          String                 @id @default(uuid())
+  projectId   String                 @map("project_id")
+  name        String                 @db.VarChar(255)
+  dueDate     DateTime?              @map("due_date") @db.Date
+  status      ProjectMilestoneStatus @default(pending)
+  completedAt DateTime?              @map("completed_at")
+  createdAt   DateTime               @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_milestones")
+}
+
+// ============================== Notifications (Sprint 14) =========================
+// morise.docx, Section 39 ("Notifications and Alerts"): "The system should
+// automatically notify authorized users about important events" —
+// "Workflow notifications" specifically, not the Email/Push/SMS channels
+// the same section also lists, which need real external infrastructure
+// (SMTP, a push provider) this proof-of-concept doesn't have, the same
+// class of honest gap already noted for object storage and a job
+// scheduler. This is an in-app notification feed only: a row per
+// recipient, created synchronously in-process by the same services that
+// already call AuditService — not a new event bus, matching how this
+// project's "Audit & Reporting Service" is similarly stood in for by a
+// direct, synchronous call rather than a real Kafka consumer.
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id") // recipient
+  companyId  String?   @map("company_id")
+  type       String    @db.VarChar(100)
+  title      String    @db.VarChar(255)
+  message    String?
+  entityType String?   @map("entity_type")
+  entityId   String?   @map("entity_id")
+  isRead     Boolean   @default(false) @map("is_read")
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ==================== Company and Holdings Management deepening ===================
+// morise.docx, Section 2 ("Company and Holdings Management") lists several
+// bullets FR-COMP-01–09 never covered: "Configure company-specific
+// policies," "Transfer or share resources between companies," "Generate
+// consolidated group reports," "Compare performance of subsidiaries," and
+// "Maintain inter-company transactions." Policies and inter-company
+// transactions are the two genuinely new data concepts; resource transfer
+// extends Asset.transfer() (see that model, unchanged here) to allow a
+// company change, not just branch/custodian; group reports/comparison
+// extend the Reports module (Sprint 13) with no new table.
+
+model CompanyPolicy {
+  id                String    @id @default(uuid())
+  companyId         String    @map("company_id")
+  name              String    @db.VarChar(255)
+  description       String?
+  policyType        String?   @map("policy_type") @db.VarChar(100) // freeform, e.g. "HR", "Finance", "IT", "Compliance"
+  documentReference String?   @map("document_reference") @db.VarChar(150) // reference, not a file upload — same deferred gap as elsewhere
+  effectiveDate     DateTime? @map("effective_date") @db.Date
+  status            String    @default("active") @db.VarChar(20) // active | inactive
+  createdBy         String    @map("created_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([companyId])
+  @@map("company_policies")
+}
+
+enum InterCompanyTransactionType {
+  loan
+  transfer
+  service_charge
+  cost_allocation
+  other
+}
+
+enum InterCompanyTransactionStatus {
+  draft
+  posted
+}
+
+// A transaction between two companies in the same Group, posted as two
+// independently-balanced journal entries (one per company, per BR-03 —
+// each company's own books must balance on their own, matching real
+// inter-company accounting: a receivable in one company's books, a
+// matching payable in the other's, not a single cross-company entry,
+// which no real chart of accounts supports).
+model InterCompanyTransaction {
+  id                    String                        @id @default(uuid())
+  fromCompanyId         String                        @map("from_company_id")
+  toCompanyId           String                        @map("to_company_id")
+  transactionType       InterCompanyTransactionType   @map("transaction_type")
+  amount                Decimal                       @db.Decimal(18, 2)
+  currency              String                        @db.Char(3)
+  description           String?
+  transactionDate       DateTime                      @map("transaction_date") @db.Date
+  status                InterCompanyTransactionStatus @default(draft)
+  fromAccountId         String?                       @map("from_account_id") // credited in fromCompany (resource/value leaving)
+  fromClearingAccountId String?                       @map("from_clearing_account_id") // debited in fromCompany ("Due from ToCompany")
+  toClearingAccountId   String?                       @map("to_clearing_account_id") // credited in toCompany ("Due to FromCompany")
+  toAccountId           String?                       @map("to_account_id") // debited in toCompany (resource/value received)
+  fromJournalEntryId    String?                       @map("from_journal_entry_id")
+  toJournalEntryId      String?                       @map("to_journal_entry_id")
+  createdBy             String                        @map("created_by")
+  postedBy              String?                       @map("posted_by")
+  postedAt              DateTime?                     @map("posted_at")
+  createdAt             DateTime                      @default(now()) @map("created_at")
+
+  @@index([fromCompanyId])
+  @@index([toCompanyId])
+  @@map("inter_company_transactions")
+}
+
+// ============================== Customer Storefront ===============================
+// Sprint 16 — the first customer-facing (not staff-facing) module. Turns the
+// screenshots/Customer/ mockups into a real Sales/Invoicing/Support slice,
+// deliberately deferred everywhere else in this codebase (see README,
+// "Deliberately deferred"). A customer portal login is per-Customer-record
+// (see accountNumber/passwordHash on Customer, above), not per
+// employee-at-customer. Cart is client-side only (localStorage in the
+// storefront app) — nothing here models a server-side cart, only the Order
+// it becomes at checkout.
+
+model CustomerRefreshToken {
+  id         String    @id @default(uuid())
+  customerId String    @map("customer_id")
+  tokenHash  String    @map("token_hash") @db.VarChar(255)
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([tokenHash])
+  @@map("customer_refresh_tokens")
+}
+
+model DeliveryAddress {
+  id          String   @id @default(uuid())
+  customerId  String   @map("customer_id")
+  label       String   @db.VarChar(100)
+  addressLine String   @map("address_line")
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Content localisation (27 August 2026): `label`/`addressLine` are stored
+  // canonically in English (normalised on write via ContentTranslationService).
+  // When the customer typed them in another language, the source language and
+  // their exact original wording are kept here so an admin can see both and
+  // the storefront can show the customer their own words back.
+  sourceLanguage      String  @default("en") @map("source_language") @db.VarChar(12)
+  labelOriginal       String? @map("label_original")
+  addressLineOriginal String? @map("address_line_original")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([customerId])
+  @@map("delivery_addresses")
+}
+
+enum OrderStatus {
+  placed
+  confirmed
+  packed
+  out_for_delivery
+  delivered
+  cancelled
+}
+
+// Captured at checkout as the customer's stated intent only — see
+// PaymentsService for the judgment call that actual money movement and GL
+// posting always happens through the separate Payments flow, never here.
+enum PaymentMethod {
+  mobile_money
+  card
+  bank_transfer
+}
+
+// Every order is invoiced on credit regardless of paymentMethodPreference
+// (see judgment call above) — companyId is the *selling* company (logical
+// reference, matching companyId's use everywhere else in this schema);
+// customerId is likewise logical, matching submittedBy/createdBy's use
+// elsewhere, not a real FK.
+model Order {
+  id                         String         @id @default(uuid())
+  orderNumber                String         @map("order_number") @db.VarChar(50)
+  companyId                  String         @map("company_id")
+  customerId                 String         @map("customer_id")
+  status                     OrderStatus    @default(placed)
+  deliveryAddressId          String?        @map("delivery_address_id")
+  requestedDeliveryDate      DateTime?      @map("requested_delivery_date") @db.Date
+  paymentMethodPreference    PaymentMethod? @map("payment_method_preference")
+  subtotal                   Decimal        @db.Decimal(18, 2)
+  deliveryFee                Decimal        @default(0) @map("delivery_fee") @db.Decimal(18, 2)
+  vatAmount                  Decimal        @default(0) @map("vat_amount") @db.Decimal(18, 2)
+  // Marketing & Promos (28 August 2026): a storefront discount code applied
+  // at checkout. discountCode is the code text as entered; discountAmount is
+  // the money taken off the subtotal before VAT and delivery.
+  discountCode               String?        @map("discount_code") @db.VarChar(40)
+  discountAmount             Decimal        @default(0) @map("discount_amount") @db.Decimal(18, 2)
+  totalAmount                Decimal        @map("total_amount") @db.Decimal(18, 2)
+  cancelledAt                DateTime?      @map("cancelled_at")
+  // cancellationReason is stored in English (customer input is normalised on
+  // write — content localisation, 29 August 2026). cancellationReasonOriginal
+  // keeps the customer's exact words when they cancelled in a non-English
+  // language; cancellationSourceLanguage records which one, so the storefront
+  // can show a customer their own wording back.
+  cancellationReason         String?        @map("cancellation_reason")
+  cancellationReasonOriginal String?        @map("cancellation_reason_original")
+  cancellationSourceLanguage String?        @map("cancellation_source_language") @db.VarChar(12)
+  createdAt                  DateTime       @default(now()) @map("created_at")
+  updatedAt                  DateTime       @updatedAt @map("updated_at")
+
+  deliveryAddress DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
+  // Storefront group catalogue (29 August 2026): the selling subsidiary, so
+  // the storefront can label an order "sold by <company>" when one cart is
+  // split into one order per subsidiary. companyId already existed; this is
+  // the relation only, no new column.
+  company         Company          @relation(fields: [companyId], references: [id])
+  items           OrderItem[]
+  invoice         Invoice?
+
+  @@unique([companyId, orderNumber])
+  @@index([companyId])
+  @@index([customerId])
+  @@map("orders")
+}
+
+// productId is a real FK to Product — same cross-"service" pattern already
+// established by Expense.expenseAccountId -> Account and Asset -> Account.
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String  @map("order_id")
+  productId   String  @map("product_id")
+  productName String  @map("product_name") @db.VarChar(255)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(18, 2)
+  quantity    Int
+  subtotal    Decimal @db.Decimal(18, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+// Overdue/due-soon is computed at read time from dueDate vs now, not
+// stored — avoids a stale-status bug class (the same reasoning
+// FinancialPeriodStatus's own closedAt/closedBy pair sidesteps by storing
+// the fact, not a derived label).
+model Invoice {
+  id             String    @id @default(uuid())
+  invoiceNumber  String    @map("invoice_number") @db.VarChar(50)
+  companyId      String    @map("company_id")
+  customerId     String    @map("customer_id")
+  orderId        String    @unique @map("order_id")
+  amount         Decimal   @db.Decimal(18, 2)
+  dueDate        DateTime  @map("due_date") @db.Date
+  paidAt         DateTime? @map("paid_at")
+  journalEntryId String?   @map("journal_entry_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  order              Order               @relation(fields: [orderId], references: [id])
+  paymentAllocations PaymentAllocation[]
+
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId])
+  @@index([customerId])
+  @@map("invoices")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  companyId      String        @map("company_id")
+  customerId     String        @map("customer_id")
+  method         PaymentMethod
+  reference      String?       @db.VarChar(150)
+  amount         Decimal       @db.Decimal(18, 2)
+  journalEntryId String?       @map("journal_entry_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  allocations PaymentAllocation[]
+
+  @@index([companyId])
+  @@index([customerId])
+  @@map("payments")
+}
+
+// A payment can cover several invoices at once — the "Select Invoices to
+// Pay" checkboxes in the mockup. amountApplied always equals the full
+// invoice amount in this slice (no partial-invoice payment UI exists), but
+// the shape supports it if that changes later.
+model PaymentAllocation {
+  id            String  @id @default(uuid())
+  paymentId     String  @map("payment_id")
+  invoiceId     String  @map("invoice_id")
+  amountApplied Decimal @map("amount_applied") @db.Decimal(18, 2)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@map("payment_allocations")
+}
+
+enum TicketCategory {
+  delivery_issue
+  billing
+  product
+  other
+}
+
+enum TicketPriority {
+  low
+  medium
+  high
+}
+
+enum TicketStatus {
+  open
+  awaiting_reply
+  resolved
+  closed
+}
+
+enum TicketAuthorType {
+  customer
+  staff
+}
+
+model SupportTicket {
+  id               String         @id @default(uuid())
+  ticketNumber     String         @map("ticket_number") @db.VarChar(50)
+  companyId        String         @map("company_id")
+  customerId       String         @map("customer_id")
+  category         TicketCategory
+  priority         TicketPriority @default(medium)
+  subject          String         @db.VarChar(255)
+  description      String
+  relatedOrderId   String?        @map("related_order_id")
+  relatedInvoiceId String?        @map("related_invoice_id")
+  status           TicketStatus   @default(open)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  // Content localisation (27 August 2026): subject/description are stored in
+  // English; when the customer wrote in another language their originals are
+  // preserved here (see DeliveryAddress for the rationale).
+  sourceLanguage      String  @default("en") @map("source_language") @db.VarChar(12)
+  subjectOriginal     String? @map("subject_original")
+  descriptionOriginal String? @map("description_original")
+
+  messages TicketMessage[]
+
+  @@unique([companyId, ticketNumber])
+  @@index([companyId])
+  @@index([customerId])
+  @@map("support_tickets")
+}
+
+// authorId is a logical reference — either a Customer.id or a User.id,
+// distinguished by authorType, matching AuditLog.userId's own no-FK
+// convention for a column that can point at more than one table.
+model TicketMessage {
+  id         String           @id @default(uuid())
+  ticketId   String           @map("ticket_id")
+  authorType TicketAuthorType @map("author_type")
+  authorId   String           @map("author_id")
+  message    String
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  // Content localisation (27 August 2026): a customer reply is stored in
+  // English with the original kept here; a staff reply is authored in English
+  // (sourceLanguage 'en', no original).
+  sourceLanguage  String  @default("en") @map("source_language") @db.VarChar(12)
+  messageOriginal String? @map("message_original")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_messages")
+}
+
+// ======================= Marketing & Promos (28 August 2026) =======================
+// The Admin "Marketing & Promos" section. Discount codes the customer
+// storefront validates and applies at checkout, and promotional banners the
+// storefront home renders. Both are per-company, scoped like Product.
+
+enum DiscountType {
+  percentage // `value` is a percent of the order subtotal (0–100)
+  fixed // `value` is a flat amount in the company's currency
+}
+
+enum DiscountCodeStatus {
+  active
+  inactive
+}
+
+model DiscountCode {
+  id             String             @id @default(uuid())
+  companyId      String             @map("company_id")
+  code           String             @db.VarChar(40)
+  description    String?
+  discountType   DiscountType       @map("discount_type")
+  value          Decimal            @db.Decimal(18, 2)
+  minOrderValue  Decimal?           @map("min_order_value") @db.Decimal(18, 2)
+  maxRedemptions Int?               @map("max_redemptions")
+  timesRedeemed  Int                @default(0) @map("times_redeemed")
+  startsAt       DateTime?          @map("starts_at")
+  endsAt         DateTime?          @map("ends_at")
+  status         DiscountCodeStatus @default(active)
+  createdBy      String             @map("created_by")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@map("discount_codes")
+}
+
+model PromoBanner {
+  id        String    @id @default(uuid())
+  companyId String    @map("company_id")
+  heading   String    @db.VarChar(160)
+  body      String?
+  linkUrl   String?   @map("link_url") @db.VarChar(500)
+  linkLabel String?   @map("link_label") @db.VarChar(80)
+  placement String    @default("storefront_home") @db.VarChar(40)
+  sortOrder Int       @default(0) @map("sort_order")
+  startsAt  DateTime? @map("starts_at")
+  endsAt    DateTime? @map("ends_at")
+  active    Boolean   @default(true)
+  createdBy String    @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([companyId])
+  @@map("promo_banners")
+}
+
+// ======================= CMS / Site Builder (28 August 2026) =======================
+// Editable storefront content — landing copy, static pages (About, Terms),
+// legal text. Site-wide content, not per-company. `body` is the working
+// copy the editor sees; `publishedBody` is the last published snapshot the
+// storefront serves, so an in-progress edit never leaks to customers.
+
+enum ContentBlockStatus {
+  draft
+  published
+}
+
+model ContentBlock {
+  id            String             @id @default(uuid())
+  slug          String             @unique @db.VarChar(80)
+  title         String             @db.VarChar(200)
+  body          String
+  publishedBody String?            @map("published_body")
+  status        ContentBlockStatus @default(draft)
+  publishedAt   DateTime?          @map("published_at")
+  updatedBy     String             @map("updated_by")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@map("content_blocks")
+}
+
+// Social media channels (29 August 2026) — managed in Admin » CMS / Site
+// Builder, displayed in the storefront / corporate-site footer. Site-wide,
+// not per-company. `isVisible` hides a channel from the storefront without
+// deleting it; `sortOrder` sets the footer order.
+
+enum SocialPlatform {
+  facebook
+  x
+  instagram
+  linkedin
+  youtube
+  tiktok
+  whatsapp
+  telegram
+  other
+}
+
+model SocialLink {
+  id        String         @id @default(uuid())
+  platform  SocialPlatform
+  label     String?        @db.VarChar(120)
+  url       String         @db.VarChar(500)
+  sortOrder Int            @default(0) @map("sort_order")
+  isVisible Boolean        @default(true) @map("is_visible")
+  createdBy String         @map("created_by")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  @@map("social_links")
+}
+
+// Landing-page FAQ (29 August 2026) — managed in Admin » CMS / Site Builder,
+// shown in the FAQ section of the corporate landing page. Site-wide.
+
+model FaqItem {
+  id        String   @id @default(uuid())
+  question  String   @db.VarChar(300)
+  answer    String
+  sortOrder Int      @default(0) @map("sort_order")
+  isVisible Boolean  @default(true) @map("is_visible")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("faq_items")
+}
+
+// Site disclaimer (30 August 2026) — the statements shown on the full-page
+// disclaimer gate a signed-out visitor must acknowledge before the corporate
+// landing page appears. Each row is one statement; admins manage the list in
+// Admin » CMS / Site Builder. Site-wide, same scope model as FaqItem.
+
+model DisclaimerItem {
+  id        String   @id @default(uuid())
+  body      String
+  sortOrder Int      @default(0) @map("sort_order")
+  isVisible Boolean  @default(true) @map("is_visible")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("disclaimer_items")
+}
+
+// Newsletter sign-ups (29 August 2026) — captured from the landing page's
+// newsletter section (public, no account). Admins view the list in
+// Admin » CMS / Site Builder.
+
+enum NewsletterStatus {
+  subscribed
+  unsubscribed
+}
+
+model NewsletterSubscriber {
+  id        String           @id @default(uuid())
+  email     String           @unique @db.VarChar(255)
+  status    NewsletterStatus @default(subscribed)
+  source    String?          @db.VarChar(80)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@map("newsletter_subscribers")
+}
+
+// ======================= Delivery (31 August 2026) =======================
+// The "Delivery" concept for Morise Logistics Ltd (docx/19 — Clearing,
+// Forwarding & Logistics; source spec: docx/Delivery-Software-Feature-
+// Specification.docx). Morise Logistics runs the physical delivery of a
+// customer's ordered goods/services and of invoices/statements, on behalf
+// of whichever group subsidiary sold them.
+//
+// This is a proportionate slice of the source spec: the dispatch/admin
+// surface (create, assign a driver, advance status, capture proof of
+// delivery, exception handling) plus a driver register and delivery
+// metrics. The customer/driver mobile apps, real-time GPS streaming,
+// routing engine and an event bus are out of scope here (the spec lists
+// them as later phases / "suggested" architecture); checkpoints are
+// free-text, not live coordinates.
+//
+// Cross-entity references (orderId / invoiceId / customerId /
+// originCompanyId / originBranchId / companyId / createdBy / employeeId)
+// are relation-less FK columns — the same convention Invoice.journalEntryId
+// already uses — so this module's schema is self-contained. Only the two
+// intra-module relations (Delivery↔DeliveryEvent, Delivery→DeliveryDriver)
+// are declared.
+
+enum DeliveryStatus {
+  pending // created, not yet assigned to a driver
+  assigned // driver + vehicle assigned, not yet collected
+  picked_up // goods/documents collected from the origin branch
+  in_transit // on the way to the customer
+  delivered // handed over; proof of delivery captured
+  failed // delivery exception (no-one present, wrong address, refused, ...)
+  cancelled
+}
+
+enum DeliveryKind {
+  goods // delivering the items on a customer order
+  invoice // delivering an invoice / statement / document to the customer
+}
+
+enum DeliveryProofType {
+  none
+  signature
+  photo
+  otp
+}
+
+model DeliveryDriver {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id") // Morise Logistics Ltd
+  employeeId    String?  @map("employee_id") // optional link to an Employee record
+  name          String   @db.VarChar(160)
+  phone         String?  @db.VarChar(30)
+  licenseNumber String?  @map("license_number") @db.VarChar(60)
+  vehicleReg    String?  @map("vehicle_reg") @db.VarChar(30)
+  vehicleType   String?  @map("vehicle_type") @db.VarChar(40) // motorcycle | van | truck | ...
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  deliveries Delivery[]
+
+  @@index([companyId])
+  @@map("delivery_drivers")
+}
+
+model Delivery {
+  id              String       @id @default(uuid())
+  deliveryNumber  String       @map("delivery_number") @db.VarChar(40)
+  companyId       String       @map("company_id") // the subsidiary running the delivery (Morise Logistics Ltd)
+  originCompanyId String       @map("origin_company_id") // the subsidiary whose goods/invoice are being delivered
+  originBranchId  String?      @map("origin_branch_id") // the branch the delivery is collected from
+  customerId      String       @map("customer_id")
+  orderId         String?      @unique @map("order_id") // set when delivering an order's goods
+  invoiceId       String?      @map("invoice_id") // set when delivering an invoice / statement
+  kind            DeliveryKind @default(goods)
+
+  status DeliveryStatus @default(pending)
+
+  driverId String? @map("driver_id")
+
+  dropAddress      String    @map("drop_address")
+  dropContactName  String?   @map("drop_contact_name") @db.VarChar(160)
+  dropContactPhone String?   @map("drop_contact_phone") @db.VarChar(30)
+  instructions     String? // gate code, "leave at reception", contactless, ...
+  scheduledDate    DateTime? @map("scheduled_date") @db.Date
+  deliveryFee      Decimal   @default(0) @map("delivery_fee") @db.Decimal(18, 2)
+
+  assignedAt  DateTime? @map("assigned_at")
+  pickedUpAt  DateTime? @map("picked_up_at")
+  inTransitAt DateTime? @map("in_transit_at")
+  deliveredAt DateTime? @map("delivered_at")
+  failedAt    DateTime? @map("failed_at")
+  cancelledAt DateTime? @map("cancelled_at")
+
+  failureReason String? @map("failure_reason")
+
+  proofType      DeliveryProofType @default(none) @map("proof_type")
+  proofReference String?           @map("proof_reference") // OTP entered, signature-capture note, photo caption
+  recipientName  String?           @map("recipient_name") @db.VarChar(160)
+
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  driver DeliveryDriver? @relation(fields: [driverId], references: [id])
+  events DeliveryEvent[]
+
+  @@unique([companyId, deliveryNumber])
+  @@index([companyId])
+  @@index([originCompanyId])
+  @@index([customerId])
+  @@index([orderId])
+  @@index([invoiceId])
+  @@index([status])
+  @@map("deliveries")
+}
+
+model DeliveryEvent {
+  id           String         @id @default(uuid())
+  deliveryId   String         @map("delivery_id")
+  status       DeliveryStatus
+  note         String?
+  locationText String?        @map("location_text") // free-text checkpoint, not GPS
+  recordedBy   String         @map("recorded_by")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId])
+  @@map("delivery_events")
+}

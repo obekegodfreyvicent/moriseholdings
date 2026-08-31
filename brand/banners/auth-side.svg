@@ -1,0 +1,27 @@
+<svg width="960" height="1200" viewBox="0 0 960 1200" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Morise Holdings Limited" xmlns="http://www.w3.org/2000/svg">
+  <title>Morise Holdings Limited — sign-in brand panel</title>
+  <defs>
+    <linearGradient id="mg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16283F"/>
+      <stop offset="0.55" stop-color="#1E3A5F"/>
+      <stop offset="1" stop-color="#2E5395"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="1200" fill="url(#mg)"/>
+  <g transform="translate(360 620) scale(9)" opacity="0.08">
+    <path d="M32 94 V40 L64 74 L96 40 V94" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g opacity="0.3" stroke="#FFFFFF" stroke-width="2" fill="none">
+    <polyline points="80,980 300,980 420,900 640,900 780,840 980,840"/>
+  </g>
+  <circle cx="420" cy="900" r="7" fill="#D97706"/>
+  <circle cx="780" cy="840" r="7" fill="#D97706"/>
+  <g transform="translate(88 96)">
+    <rect x="0" y="0" width="96" height="96" rx="22" fill="#FFFFFF"/>
+    <path d="M24 72 V30 L48 56 L72 30 V72" fill="none" stroke="#1E3A5F" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M48 15 L58 25 L48 35 L38 25 Z" fill="#D97706"/>
+  </g>
+  <text x="204" y="140" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="2" fill="#FFFFFF">MORISE</text>
+  <text x="205" y="168" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" letter-spacing="4" fill="rgba(255,255,255,0.7)">HOLDINGS LIMITED</text>
+  <text x="90" y="1120" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" font-weight="500" fill="rgba(255,255,255,0.8)">One group. One account.</text>
+</svg>
