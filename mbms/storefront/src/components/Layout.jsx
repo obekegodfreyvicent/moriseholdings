@@ -52,7 +52,7 @@ export function Layout({ children }) {
         <div className="sf-topbar-actions">
           <LanguageSwitcher compact />
           <Link to="/cart" className="sf-cart-btn">
-            🛒 <span className="sf-cart-label">{t('header.cart')}</span>
+            🧾 <span className="sf-cart-label">{t('header.cart')}</span>
             {count > 0 && <span className="sf-cart-badge">{count}</span>}
           </Link>
           <div className="sf-account-menu">

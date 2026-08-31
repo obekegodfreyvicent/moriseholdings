@@ -13,7 +13,7 @@ export const en = {
   'header.brand': 'Morise Holdings — Customer Portal',
   'header.buyingThrough': 'Your account',
   'header.searchPlaceholder': 'Search products, order #, invoice #...',
-  'header.cart': 'Cart',
+  'header.cart': 'Invoice',
   'header.myAccount': 'My Account',
   'header.signOut': 'Sign Out',
   'header.language': 'Language',
@@ -29,7 +29,7 @@ export const en = {
   'common.saved': 'Saved.',
   'common.back': 'Back',
   'common.continueShopping': 'Continue Shopping',
-  'common.addToCart': 'Add to Cart',
+  'common.addToCart': 'Add to Invoice',
   'common.payNow': 'Pay Now',
   'common.download': 'Download',
   'common.loading': 'Loading…',
@@ -127,7 +127,7 @@ export const en = {
   'landing.eyebrow': 'Customer Portal',
   'landing.heroTitle': 'Order, track, pay and get support — all in one place with Morise Holdings',
   'landing.heroSubtitle':
-    "The self-service B2B portal for Morise Holdings' business customers: browse a live product catalog, follow every order from placement to delivery, settle invoices online and reach support without a phone call.",
+    "The self-service B2B portal for Morise Holdings' business customers: browse a live services catalog, follow every order from placement to delivery, settle invoices online and reach support without a phone call.",
   'landing.ctaSignIn': 'Sign In to Your Account',
   'landing.ctaSeeMore': 'See What You Can Do',
   'landing.demoStrip': '⚠ Demonstration environment — no real orders, payments or personal data are processed here.',
@@ -148,7 +148,7 @@ export const en = {
   'page.notFound': 'That page is not available.',
   'page.backHome': 'Back to home',
   'page.updated': 'Updated {date}',
-  'landing.feat.shop.title': 'Shop the Catalog',
+  'landing.feat.shop.title': 'Shop the Services Catalog',
   'landing.feat.shop.desc': 'Browse live, priced products by category, search by name, and check real-time stock before you order.',
   'landing.feat.track.title': 'Track Every Order',
   'landing.feat.track.desc':
@@ -169,7 +169,7 @@ export const en = {
   'landing.step1.desc': 'Use the email or account number Morise Holdings issued your business, plus your password.',
   'landing.step2.title': 'Place and track orders',
   'landing.step2.desc':
-    'Add products to your cart, check out against your delivery address, and watch the order move through fulfillment.',
+    'Add items to your invoice, check out against your delivery address, and watch the order move through fulfillment.',
   'landing.step3.title': 'Pay and stay supported',
   'landing.step3.desc': 'Settle invoices online and raise a support ticket any time something needs attention.',
   'landing.disclaimer.title': 'Before you continue',
@@ -178,7 +178,7 @@ export const en = {
   'landing.disclaimer.b2':
     'No real orders are fulfilled, no real goods are shipped, and no real money moves. Payments (Mobile Money, Card, Bank Transfer) are simulated — no payment gateway is connected.',
   'landing.disclaimer.b3':
-    'Company names, product catalog, order and invoice history shown to demo accounts are fictional, created for demonstration purposes only.',
+    'Company names, services catalog, order and invoice history shown to demo accounts are fictional, created for demonstration purposes only.',
   'landing.disclaimer.b4':
     'Do not enter real payment details, passwords you use elsewhere, or real personal data into this environment.',
   'landing.disclaimer.b5':
@@ -207,7 +207,7 @@ export const en = {
 
   // Shop
   'shop.crumb': 'Shop',
-  'shop.heading': 'Product Catalog',
+  'shop.heading': 'Services Catalog',
   'shop.allCategories': 'All Categories',
   'shop.sortLabel': 'SORT',
   'shop.sortName': 'Name',
@@ -216,7 +216,7 @@ export const en = {
   'shop.noProducts': 'No products found.',
   'shop.general': 'General',
   'shop.added': 'Added ✓',
-  'shop.loadFailed': 'Failed to load catalog.',
+  'shop.loadFailed': 'Failed to load the services catalog.',
 
   // Product detail
   'productDetail.crumb': 'Shop / {category}',
@@ -227,14 +227,14 @@ export const en = {
   'productDetail.quantity': 'Quantity',
   'productDetail.available': '{count} available',
   'productDetail.requestQuotation': 'Request Quotation',
-  'productDetail.added': 'Added to Cart ✓',
+  'productDetail.added': 'Added to Invoice ✓',
   'productDetail.notFound': 'Product not found.',
 
-  // Cart & checkout
-  'cart.crumb': 'Shop / Cart',
-  'cart.heading': 'Cart & Checkout',
-  'cart.emptyLead': 'Your cart is empty.',
-  'cart.browseCatalog': 'Browse the catalog',
+  // Invoice & checkout
+  'cart.crumb': 'Shop / Invoice',
+  'cart.heading': 'Invoice & Checkout',
+  'cart.emptyLead': 'Your invoice is empty.',
+  'cart.browseCatalog': 'Browse the services catalog',
   'cart.toAddProducts': 'to add products.',
   'cart.yourItems': 'Your Items ({count})',
   'cart.deliveryAddress': 'Delivery Address',
@@ -391,18 +391,18 @@ export const en = {
 
   'productDetail.soldBy': 'Sold by',
   'productDetail.fulfilledFrom': 'Fulfilled from',
-  'productDetail.addFromBranch': 'Add to cart — {branch}',
+  'productDetail.addFromBranch': 'Add to Invoice — {branch}',
 
   'cart.groupLead': '{items} item(s) from {companies} Morise company(ies) — grouped by the company that fulfils them.',
   'cart.unknownCompany': 'Morise Holdings',
   'cart.fulfilledBy': 'Fulfilled by {branch}',
   'cart.companySubtotal': '{name} subtotal',
   'cart.discountSingleCompanyOnly':
-    'Discount codes apply to a single-company order. Your cart has items from more than one Morise company.',
+    'Discount codes apply to a single-company order. Your invoice has items from more than one Morise company.',
   'cart.deliveryFeePerOrder': 'Delivery ({count} × per order)',
   'cart.estimatedTotal': 'Estimated Total',
   'cart.splitNote':
-    'Your cart will be placed as {count} separate orders — one per Morise company — each invoiced on your account. You get one confirmation per order.',
+    'Your invoice will be split into {count} separate orders — one per Morise company — each invoiced on your account. You get one confirmation per order.',
   'cart.placeOrders': 'Place {count} Orders',
 
   'orders.soldBy': 'Sold by',
