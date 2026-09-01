@@ -934,6 +934,7 @@ model CustomerPasswordResetToken {
 enum SupplierStatus {
   active
   inactive
+  suspended
   blacklisted
 }
 
@@ -951,11 +952,64 @@ model Supplier {
   bankName           String?        @map("bank_name") @db.VarChar(150)
   bankAccountNumber  String?        @map("bank_account_number") @db.VarChar(255)
   status             SupplierStatus @default(active)
+  // FR-SUPP-04: a time-bound suspension, distinct from an indefinite
+  // blacklist — the reason and (optional) auto-lift date are recorded so a
+  // suspended supplier can be re-activated automatically or manually.
+  suspensionReason   String?        @map("suspension_reason")
+  suspendedUntil     DateTime?      @map("suspended_until") @db.Date
   createdAt          DateTime       @default(now()) @map("created_at")
   updatedAt          DateTime       @updatedAt @map("updated_at")
 
+  contacts    SupplierContact[]
+  evaluations SupplierEvaluation[]
+
   @@index([companyId])
   @@map("suppliers")
+}
+
+// FR-SUPP-05: several named people at one supplier (sales rep, accounts,
+// technical). Exactly one may be flagged primary; the service enforces that.
+model SupplierContact {
+  id         String   @id @default(uuid())
+  supplierId String   @map("supplier_id")
+  name       String   @db.VarChar(160)
+  title      String?  @db.VarChar(120)
+  email      String?  @db.VarChar(255)
+  phone      String?  @db.VarChar(40)
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@map("supplier_contacts")
+}
+
+// FR-SUPP-06: a periodic scorecard. Five criteria scored 1–5; the overall
+// is their average. Performance (FR-SUPP-07) is derived from these rows plus
+// the supplier's AP invoice history — there is no separate performance table.
+model SupplierEvaluation {
+  id                 String   @id @default(uuid())
+  supplierId         String   @map("supplier_id")
+  companyId          String   @map("company_id")
+  periodLabel        String   @map("period_label") @db.VarChar(40)
+  deliveryScore      Int      @map("delivery_score")
+  qualityScore       Int      @map("quality_score")
+  priceScore         Int      @map("price_score")
+  communicationScore Int      @map("communication_score")
+  complianceScore    Int      @map("compliance_score")
+  overallScore       Decimal  @map("overall_score") @db.Decimal(4, 2)
+  comments           String?
+  evaluatedBy        String   @map("evaluated_by")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@index([companyId])
+  @@map("supplier_evaluations")
 }
 
 // ======================== Audit & Reporting (in-process) ==========================

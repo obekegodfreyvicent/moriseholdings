@@ -1,4 +1,15 @@
-import { IsDateString, IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEmail,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateSupplierDto {
   @IsUUID()
@@ -83,4 +94,112 @@ export class UpdateSupplierDto {
   @IsOptional()
   @IsString()
   bankAccountNumber?: string;
+}
+
+// FR-SUPP-05: multi-contact list
+export class CreateSupplierContactDto {
+  @IsString()
+  @MaxLength(160)
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  title?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrimary?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class UpdateSupplierContactDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  title?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrimary?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+// FR-SUPP-04: time-bound suspension
+export class SuspendSupplierDto {
+  @IsString()
+  @MaxLength(500)
+  reason: string;
+
+  @IsOptional()
+  @IsDateString()
+  until?: string;
+}
+
+// FR-SUPP-06: periodic evaluation scorecard (each criterion 1–5)
+export class CreateSupplierEvaluationDto {
+  @IsString()
+  @MaxLength(40)
+  periodLabel: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  deliveryScore: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  qualityScore: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  priceScore: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  communicationScore: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  complianceScore: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  comments?: string;
 }

@@ -1797,11 +1797,11 @@ async function main() {
     });
   }
 
-  const agroChem = await prisma.supplier.findFirst({
+  let agroChem = await prisma.supplier.findFirst({
     where: { companyId: agro.id, name: 'AgroChem Uganda Ltd' },
   });
   if (!agroChem) {
-    await prisma.supplier.create({
+    agroChem = await prisma.supplier.create({
       data: {
         companyId: agro.id,
         name: 'AgroChem Uganda Ltd',
@@ -1812,6 +1812,91 @@ async function main() {
         bankName: 'Equity Bank (U) Ltd',
         bankAccountNumber: '4009911223',
       },
+    });
+  }
+
+  // FR-SUPP-05/06: a multi-contact list and a couple of evaluation
+  // scorecards for AgroChem, so the Suppliers screen and the derived
+  // /suppliers/:id/performance summary have something to show on a fresh DB.
+  if ((await prisma.supplierContact.count({ where: { supplierId: agroChem.id } })) === 0) {
+    await prisma.supplierContact.createMany({
+      data: [
+        {
+          supplierId: agroChem.id,
+          name: 'Miriam Nakato',
+          title: 'Key Accounts Manager',
+          email: 'miriam.nakato@agrochem.co.ug',
+          phone: '+256 772 118 044',
+          isPrimary: true,
+          note: 'First point of contact for orders and pricing.',
+        },
+        {
+          supplierId: agroChem.id,
+          name: 'David Okello',
+          title: 'Accounts Receivable',
+          email: 'ar@agrochem.co.ug',
+          phone: '+256 414 233 020',
+        },
+        {
+          supplierId: agroChem.id,
+          name: 'Eng. Sarah Kirabo',
+          title: 'Technical / Product Support',
+          email: 'support@agrochem.co.ug',
+        },
+      ],
+    });
+  }
+  if ((await prisma.supplierEvaluation.count({ where: { supplierId: agroChem.id } })) === 0) {
+    const evaluator = kato?.id ?? mathias.id;
+    const scorecard = (
+      periodLabel: string,
+      delivery: number,
+      quality: number,
+      price: number,
+      communication: number,
+      compliance: number,
+      comments: string,
+      createdAt: Date,
+    ) => ({
+      supplierId: agroChem!.id,
+      companyId: agro.id,
+      periodLabel,
+      deliveryScore: delivery,
+      qualityScore: quality,
+      priceScore: price,
+      communicationScore: communication,
+      complianceScore: compliance,
+      overallScore: (
+        (delivery + quality + price + communication + compliance) /
+        5
+      ).toFixed(2),
+      comments,
+      evaluatedBy: evaluator,
+      createdAt,
+    });
+    await prisma.supplierEvaluation.createMany({
+      data: [
+        scorecard(
+          'Q1 2026',
+          4,
+          4,
+          3,
+          4,
+          5,
+          'Reliable on quality and compliance; pricing a little above market.',
+          new Date('2026-04-05'),
+        ),
+        scorecard(
+          'Q2 2026',
+          5,
+          4,
+          4,
+          4,
+          5,
+          'On-time delivery improved to full marks this quarter.',
+          new Date('2026-07-04'),
+        ),
+      ],
     });
   }
   const zenithTraders = await prisma.supplier.findFirst({
