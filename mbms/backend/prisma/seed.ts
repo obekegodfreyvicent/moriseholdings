@@ -2094,6 +2094,174 @@ async function main() {
     }
   }
 
+  // ============ Inventory Management (1 September 2026) ============
+  // A MAIN warehouse per company that holds stock, per-warehouse balances
+  // backfilled from the Product.stockQuantity roll-up, plus — for Morise
+  // Agro Ltd — a second warehouse with locations, min / max stock levels,
+  // one batch-tracked and one serial-tracked product, and a demo transfer.
+  console.log('Seeding Inventory Management: warehouses, per-warehouse balances, batches, serials, a transfer (1 September 2026)...');
+
+  const companiesWithStock = await prisma.product.findMany({
+    where: { stockQuantity: { not: null } },
+    select: { companyId: true },
+    distinct: ['companyId'],
+  });
+  for (const { companyId } of companiesWithStock) {
+    let main = await prisma.warehouse.findFirst({ where: { companyId, code: 'MAIN' } });
+    if (!main) {
+      main = await prisma.warehouse.create({
+        data: { companyId, code: 'MAIN', name: 'Main Warehouse', isDefault: true },
+      });
+    } else if (!main.isDefault) {
+      main = await prisma.warehouse.update({ where: { id: main.id }, data: { isDefault: true } });
+    }
+    const prods = await prisma.product.findMany({
+      where: { companyId, stockQuantity: { not: null } },
+      select: { id: true, stockQuantity: true },
+    });
+    for (const p of prods) {
+      const has = await prisma.stockBalance.count({ where: { productId: p.id } });
+      if (has === 0) {
+        await prisma.stockBalance.create({
+          data: { companyId, productId: p.id, warehouseId: main.id, quantity: p.stockQuantity ?? 0 },
+        });
+      }
+    }
+  }
+
+  const agroMain = await prisma.warehouse.findFirst({ where: { companyId: agro.id, code: 'MAIN' } });
+  if (agroMain) {
+    let dispatch = await prisma.warehouse.findFirst({ where: { companyId: agro.id, code: 'KIRA-DISP' } });
+    if (!dispatch) {
+      dispatch = await prisma.warehouse.create({
+        data: {
+          companyId: agro.id,
+          branchId: 'b1000000-0000-4000-8000-000000000001',
+          code: 'KIRA-DISP',
+          name: 'Kira Dispatch Store',
+          address: 'Kira HQ, Plot 12 Bombo Road',
+        },
+      });
+    }
+    for (const [code, name, description] of [
+      ['A1', 'Aisle A – Rack 1', 'Bagged inputs, ground level'],
+      ['COLD-1', 'Cold Room 1', 'Temperature-controlled — seed and chemicals'],
+    ] as const) {
+      const exists = await prisma.stockLocation.findFirst({ where: { warehouseId: agroMain.id, code } });
+      if (!exists) {
+        await prisma.stockLocation.create({ data: { warehouseId: agroMain.id, code, name, description } });
+      }
+    }
+
+    // Minimum / maximum stock levels for the shortage / surplus reports.
+    const levelsByCode: Record<string, { min?: number; max?: number }> = {
+      'PRD-1002': { min: 100, max: 500 }, // on-hand 86 -> below min (shortage)
+      'PRD-1005': { min: 4_000, max: 20_000 },
+      'PRD-1006': { min: 120, max: 250 }, // on-hand 300 -> above max (surplus)
+      'PRD-1007': { min: 200, max: 800 }, // on-hand 180 -> below min (shortage)
+      'PRD-1009': { min: 40, max: 150 },
+    };
+    for (const [code, { min, max }] of Object.entries(levelsByCode)) {
+      const prod = await prisma.product.findFirst({ where: { companyId: agro.id, productCode: code } });
+      if (prod) {
+        await prisma.product.update({
+          where: { id: prod.id },
+          data: { minStockLevel: min ?? null, maxStockLevel: max ?? null },
+        });
+      }
+    }
+
+    // Batch + expiry tracking on the herbicide (PRD-1009): two batches, one
+    // already close to expiry so the stock-expiring report has a row.
+    const herbicide = await prisma.product.findFirst({ where: { companyId: agro.id, productCode: 'PRD-1009' } });
+    if (herbicide) {
+      await prisma.product.update({ where: { id: herbicide.id }, data: { trackBatches: true } });
+      for (const [batchNumber, expiry, quantity] of [
+        ['HB-2026-03', '2026-09-20', 20],
+        ['HB-2026-07', '2027-06-30', 75],
+      ] as const) {
+        const exists = await prisma.stockBatch.findFirst({
+          where: { productId: herbicide.id, warehouseId: agroMain.id, batchNumber },
+        });
+        if (!exists) {
+          await prisma.stockBatch.create({
+            data: {
+              companyId: agro.id,
+              productId: herbicide.id,
+              warehouseId: agroMain.id,
+              batchNumber,
+              expiryDate: new Date(expiry),
+              quantity,
+            },
+          });
+        }
+      }
+    }
+
+    // Serial-number tracking on the pallet product (PRD-1006): three units.
+    const pallet = await prisma.product.findFirst({ where: { companyId: agro.id, productCode: 'PRD-1006' } });
+    if (pallet) {
+      await prisma.product.update({ where: { id: pallet.id }, data: { trackSerials: true } });
+      for (const serialNumber of ['PLT-0001', 'PLT-0002', 'PLT-0003']) {
+        const exists = await prisma.stockSerial.findFirst({
+          where: { productId: pallet.id, serialNumber },
+        });
+        if (!exists) {
+          await prisma.stockSerial.create({
+            data: {
+              companyId: agro.id,
+              productId: pallet.id,
+              warehouseId: agroMain.id,
+              serialNumber,
+            },
+          });
+        }
+      }
+
+      // Demo transfer: move 20 pallets MAIN -> KIRA-DISP once.
+      if (dispatch) {
+        const alreadyTransferred = await prisma.stockMovement.findFirst({
+          where: { productId: pallet.id, movementType: 'transfer_out' },
+        });
+        if (!alreadyTransferred) {
+          const mainBal = await prisma.stockBalance.findUnique({
+            where: { productId_warehouseId: { productId: pallet.id, warehouseId: agroMain.id } },
+          });
+          const have = mainBal?.quantity ?? 0;
+          const move = Math.min(20, have);
+          if (move > 0) {
+            const mainAfter = have - move;
+            await prisma.stockBalance.update({
+              where: { productId_warehouseId: { productId: pallet.id, warehouseId: agroMain.id } },
+              data: { quantity: mainAfter },
+            });
+            await prisma.stockBalance.upsert({
+              where: { productId_warehouseId: { productId: pallet.id, warehouseId: dispatch.id } },
+              create: { companyId: agro.id, productId: pallet.id, warehouseId: dispatch.id, quantity: move },
+              update: { quantity: { increment: move } },
+            });
+            await prisma.stockMovement.create({
+              data: {
+                companyId: agro.id, productId: pallet.id, movementType: 'transfer_out',
+                quantity: -move, balanceAfter: mainAfter, warehouseId: agroMain.id,
+                counterpartyWarehouseId: dispatch.id, reason: 'Stock the dispatch store (seed)',
+                reference: 'SEED-TRF', createdBy: mathias.id,
+              },
+            });
+            await prisma.stockMovement.create({
+              data: {
+                companyId: agro.id, productId: pallet.id, movementType: 'transfer_in',
+                quantity: move, balanceAfter: move, warehouseId: dispatch.id,
+                counterpartyWarehouseId: agroMain.id, reason: 'Stock the dispatch store (seed)',
+                reference: 'SEED-TRF', createdBy: mathias.id,
+              },
+            });
+          }
+        }
+      }
+    }
+  }
+
   // ============ Storefront group catalogue (29 August 2026) ============
   // The Customer Storefront now shows every Morise subsidiary's products in
   // one shop, each tagged with the subsidiary and the branch that fulfils
