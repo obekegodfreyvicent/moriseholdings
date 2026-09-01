@@ -2060,6 +2060,9 @@ model Asset {
   inspections                    AssetInspection[]
   insurancePolicies              AssetInsurancePolicy[]
   events                         AssetEvent[]
+  // Fleet & Vehicle Management (2 September 2026): the fleet record for this
+  // asset, when the asset is a vehicle. 1:1, optional on both sides.
+  vehicle                        Vehicle?
 
   @@unique([companyId, assetNumber])
   @@index([companyId])
@@ -2981,4 +2984,271 @@ model DeliveryEvent {
 
   @@index([deliveryId])
   @@map("delivery_events")
+}
+
+// ===================== Fleet & Vehicle Management (2 Sep 2026) ===================
+// A fleet register on top of (and optionally linked to) the Asset module: a
+// vehicle carries its plate / VIN / make-model, its driver assignments, its
+// odometer history, fuel logs, service schedules & records, statutory
+// renewals (road licence, inspection certificate, PSV permit …), accident
+// records and a rolled-up expense log. Live GPS telematics is out of scope —
+// "tracking" here is the odometer history plus a manual last-known-location.
+// Logical (no-FK) company_id, matching Asset / Supplier.
+
+enum VehicleStatus {
+  active
+  in_service
+  off_road
+  sold
+  written_off
+}
+
+enum VehicleOwnershipType {
+  owned
+  leased
+  financed
+  hired
+}
+
+enum FuelType {
+  petrol
+  diesel
+  electric
+  hybrid
+  lpg
+  cng
+}
+
+enum VehicleAssignmentStatus {
+  active
+  ended
+}
+
+enum ServiceRecordKind {
+  service
+  repair
+}
+
+enum VehicleRenewalType {
+  road_licence
+  inspection_certificate
+  psv_permit
+  insurance
+  road_worthiness
+  other
+}
+
+enum AccidentSeverity {
+  minor
+  moderate
+  major
+  total_loss
+}
+
+enum VehicleExpenseCategory {
+  fuel
+  service
+  repair
+  licence
+  insurance
+  tyres
+  toll
+  fine
+  parking
+  other
+}
+
+model Vehicle {
+  id                 String               @id @default(uuid())
+  companyId          String               @map("company_id")
+  branchId           String?              @map("branch_id")
+  assetId            String?              @unique @map("asset_id")
+  registrationNumber String               @map("registration_number") @db.VarChar(30)
+  make               String               @db.VarChar(80)
+  model              String               @db.VarChar(80)
+  year               Int?
+  vin                String?              @db.VarChar(60)
+  colour             String?              @db.VarChar(40)
+  fuelType           FuelType             @default(diesel) @map("fuel_type")
+  ownershipType      VehicleOwnershipType @default(owned) @map("ownership_type")
+  ownerName          String?              @map("owner_name") @db.VarChar(150) // lessor / financier / hire company
+  acquisitionDate    DateTime?            @map("acquisition_date") @db.Date
+  currentOdometer    Int                  @default(0) @map("current_odometer")
+  odometerUnit       String               @default("km") @map("odometer_unit") @db.VarChar(5)
+  lastLocationText   String?              @map("last_location_text")
+  lastLocationAt     DateTime?            @map("last_location_at")
+  status             VehicleStatus        @default(active)
+  notes              String?
+  createdBy          String               @map("created_by")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  asset            Asset?                    @relation(fields: [assetId], references: [id])
+  driverAssignments VehicleDriverAssignment[]
+  odometerReadings VehicleOdometerReading[]
+  fuelLogs         FuelLog[]
+  serviceSchedules ServiceSchedule[]
+  serviceRecords   ServiceRecord[]
+  renewals         VehicleRenewal[]
+  accidents        AccidentRecord[]
+  expenses         VehicleExpense[]
+
+  @@unique([companyId, registrationNumber])
+  @@index([companyId])
+  @@map("vehicles")
+}
+
+model VehicleDriverAssignment {
+  id              String                  @id @default(uuid())
+  vehicleId       String                  @map("vehicle_id")
+  driverEmployeeId String                 @map("driver_employee_id") // logical ref -> employees.id
+  startDate       DateTime                @map("start_date") @db.Date
+  endDate         DateTime?               @map("end_date") @db.Date
+  status          VehicleAssignmentStatus @default(active)
+  note            String?
+  createdBy       String                  @map("created_by")
+  createdAt       DateTime                @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_driver_assignments")
+}
+
+model VehicleOdometerReading {
+  id          String   @id @default(uuid())
+  vehicleId   String   @map("vehicle_id")
+  readingDate DateTime @map("reading_date") @db.Date
+  odometer    Int
+  source      String   @default("manual") @db.VarChar(20) // manual | fuel | service
+  note        String?
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_odometer_readings")
+}
+
+model FuelLog {
+  id          String   @id @default(uuid())
+  vehicleId   String   @map("vehicle_id")
+  logDate     DateTime @map("log_date") @db.Date
+  litres      Decimal  @db.Decimal(10, 2)
+  cost        Decimal  @db.Decimal(18, 2)
+  odometer    Int?
+  fuelStation String?  @map("fuel_station") @db.VarChar(120)
+  filledToFull Boolean @default(true) @map("filled_to_full")
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("fuel_logs")
+}
+
+model ServiceSchedule {
+  id                  String   @id @default(uuid())
+  vehicleId           String   @map("vehicle_id")
+  name                String   @db.VarChar(120)
+  intervalKm          Int?     @map("interval_km")
+  intervalDays        Int?     @map("interval_days")
+  lastServiceOdometer Int?     @map("last_service_odometer")
+  lastServiceDate     DateTime? @map("last_service_date") @db.Date
+  nextDueOdometer     Int?     @map("next_due_odometer")
+  nextDueDate         DateTime? @map("next_due_date") @db.Date
+  isActive            Boolean  @default(true) @map("is_active")
+  note                String?
+  createdBy           String   @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  serviceRecords ServiceRecord[]
+
+  @@index([vehicleId])
+  @@map("service_schedules")
+}
+
+model ServiceRecord {
+  id          String            @id @default(uuid())
+  vehicleId   String            @map("vehicle_id")
+  scheduleId  String?           @map("schedule_id")
+  serviceDate DateTime          @map("service_date") @db.Date
+  odometer    Int?
+  kind        ServiceRecordKind @default(service)
+  description String
+  cost        Decimal?          @db.Decimal(18, 2)
+  provider    String?           @db.VarChar(150)
+  createdBy   String            @map("created_by")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  vehicle  Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  schedule ServiceSchedule? @relation(fields: [scheduleId], references: [id])
+
+  @@index([vehicleId])
+  @@map("service_records")
+}
+
+model VehicleRenewal {
+  id          String             @id @default(uuid())
+  vehicleId   String             @map("vehicle_id")
+  renewalType VehicleRenewalType @map("renewal_type")
+  reference   String?            @db.VarChar(120)
+  issueDate   DateTime?          @map("issue_date") @db.Date
+  expiryDate  DateTime           @map("expiry_date") @db.Date
+  cost        Decimal?           @db.Decimal(18, 2)
+  provider    String?            @db.VarChar(150)
+  note        String?
+  createdBy   String             @map("created_by")
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_renewals")
+}
+
+model AccidentRecord {
+  id                     String           @id @default(uuid())
+  vehicleId              String           @map("vehicle_id")
+  accidentDate           DateTime         @map("accident_date") @db.Date
+  location               String?
+  severity               AccidentSeverity
+  description            String
+  driverEmployeeId       String?          @map("driver_employee_id") // logical ref -> employees.id
+  thirdPartyInvolved     Boolean          @default(false) @map("third_party_involved")
+  estimatedCost          Decimal?         @map("estimated_cost") @db.Decimal(18, 2)
+  insuranceClaimReference String?         @map("insurance_claim_reference") @db.VarChar(120)
+  policeReportReference   String?         @map("police_report_reference") @db.VarChar(120)
+  resolved               Boolean          @default(false)
+  createdBy              String           @map("created_by")
+  createdAt              DateTime         @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("accident_records")
+}
+
+model VehicleExpense {
+  id          String                 @id @default(uuid())
+  vehicleId   String                 @map("vehicle_id")
+  expenseDate DateTime               @map("expense_date") @db.Date
+  category    VehicleExpenseCategory
+  amount      Decimal                @db.Decimal(18, 2)
+  odometer    Int?
+  reference   String?                @db.VarChar(120)
+  note        String?
+  sourceType  String?                @map("source_type") @db.VarChar(20) // fuel_log | service_record | renewal | manual
+  sourceId    String?                @map("source_id")
+  createdBy   String                 @map("created_by")
+  createdAt   DateTime               @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_expenses")
 }

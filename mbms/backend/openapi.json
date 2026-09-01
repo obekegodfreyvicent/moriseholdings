@@ -5794,6 +5794,773 @@
         }
       }
     },
+    "/api/v1/fleet/reports/fleet-register": {
+      "get": {
+        "operationId": "FleetController_reportFleetRegister",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/reports/fuel-consumption": {
+      "get": {
+        "operationId": "FleetController_reportFuelConsumption",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/reports/expenses": {
+      "get": {
+        "operationId": "FleetController_reportExpenses",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/reports/renewals-due": {
+      "get": {
+        "operationId": "FleetController_reportRenewalsDue",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/reports/service-due": {
+      "get": {
+        "operationId": "FleetController_reportServiceDue",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/assignments/{assignmentId}/end": {
+      "post": {
+        "operationId": "FleetController_endAssignment",
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndAssignmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/service-schedules/{scheduleId}": {
+      "patch": {
+        "operationId": "FleetController_updateSchedule",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/accidents/{accidentId}": {
+      "patch": {
+        "operationId": "FleetController_updateAccident",
+        "parameters": [
+          {
+            "name": "accidentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAccidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles": {
+      "get": {
+        "operationId": "FleetController_listVehicles",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_createVehicle",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVehicleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}": {
+      "get": {
+        "operationId": "FleetController_getVehicle",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "operationId": "FleetController_updateVehicle",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVehicleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/summary": {
+      "get": {
+        "operationId": "FleetController_summary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/location": {
+      "post": {
+        "operationId": "FleetController_logLocation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogLocationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/assignments": {
+      "get": {
+        "operationId": "FleetController_listAssignments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_assignDriver",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/odometer": {
+      "get": {
+        "operationId": "FleetController_listOdometer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_logOdometer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogOdometerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/fuel": {
+      "get": {
+        "operationId": "FleetController_listFuel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_logFuel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogFuelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/service-schedules": {
+      "get": {
+        "operationId": "FleetController_listSchedules",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_createSchedule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/service-records": {
+      "get": {
+        "operationId": "FleetController_listServiceRecords",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_addServiceRecord",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceRecordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/renewals": {
+      "get": {
+        "operationId": "FleetController_listRenewals",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_addRenewal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRenewalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/accidents": {
+      "get": {
+        "operationId": "FleetController_listAccidents",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_addAccident",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/vehicles/{id}/expenses": {
+      "get": {
+        "operationId": "FleetController_listExpenses",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "FleetController_addExpense",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVehicleExpenseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/projects": {
       "get": {
         "operationId": "ProjectsController_list",
@@ -13207,6 +13974,498 @@
           "description"
         ]
       },
+      "EndAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "endDate": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateServiceScheduleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "intervalKm": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "intervalDays": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "UpdateAccidentDto": {
+        "type": "object",
+        "properties": {
+          "resolved": {
+            "type": "boolean"
+          },
+          "estimatedCost": {
+            "type": "number",
+            "minimum": 0
+          },
+          "insuranceClaimReference": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "policeReportReference": {
+            "type": "string",
+            "maxLength": 120
+          }
+        }
+      },
+      "CreateVehicleDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string"
+          },
+          "assetId": {
+            "type": "string"
+          },
+          "registrationNumber": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "make": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "year": {
+            "type": "number",
+            "minimum": 1900
+          },
+          "vin": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "colour": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "fuelType": {
+            "type": "string",
+            "enum": [
+              "petrol",
+              "diesel",
+              "electric",
+              "hybrid",
+              "lpg",
+              "cng"
+            ]
+          },
+          "ownershipType": {
+            "type": "string",
+            "enum": [
+              "owned",
+              "leased",
+              "financed",
+              "hired"
+            ]
+          },
+          "ownerName": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "acquisitionDate": {
+            "type": "string"
+          },
+          "currentOdometer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "companyId",
+          "registrationNumber",
+          "make",
+          "model"
+        ]
+      },
+      "UpdateVehicleDto": {
+        "type": "object",
+        "properties": {
+          "branchId": {
+            "type": "string",
+            "nullable": true
+          },
+          "assetId": {
+            "type": "string",
+            "nullable": true
+          },
+          "make": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "year": {
+            "type": "number",
+            "minimum": 1900
+          },
+          "vin": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "colour": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "fuelType": {
+            "type": "string",
+            "enum": [
+              "petrol",
+              "diesel",
+              "electric",
+              "hybrid",
+              "lpg",
+              "cng"
+            ]
+          },
+          "ownershipType": {
+            "type": "string",
+            "enum": [
+              "owned",
+              "leased",
+              "financed",
+              "hired"
+            ]
+          },
+          "ownerName": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "acquisitionDate": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "in_service",
+              "off_road",
+              "sold",
+              "written_off"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "LogLocationDto": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "location"
+        ]
+      },
+      "AssignDriverDto": {
+        "type": "object",
+        "properties": {
+          "driverId": {
+            "type": "string"
+          },
+          "scheduledDate": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "driverId"
+        ]
+      },
+      "LogOdometerDto": {
+        "type": "object",
+        "properties": {
+          "readingDate": {
+            "type": "string"
+          },
+          "odometer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "readingDate",
+          "odometer"
+        ]
+      },
+      "LogFuelDto": {
+        "type": "object",
+        "properties": {
+          "logDate": {
+            "type": "string"
+          },
+          "litres": {
+            "type": "number",
+            "minimum": 1
+          },
+          "cost": {
+            "type": "number",
+            "minimum": 1
+          },
+          "odometer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "fuelStation": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "filledToFull": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "logDate",
+          "litres",
+          "cost"
+        ]
+      },
+      "CreateServiceScheduleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "intervalKm": {
+            "type": "number",
+            "minimum": 1
+          },
+          "intervalDays": {
+            "type": "number",
+            "minimum": 1
+          },
+          "lastServiceOdometer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lastServiceDate": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateServiceRecordDto": {
+        "type": "object",
+        "properties": {
+          "serviceDate": {
+            "type": "string"
+          },
+          "scheduleId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "service",
+              "repair"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "odometer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cost": {
+            "type": "number",
+            "minimum": 0
+          },
+          "provider": {
+            "type": "string",
+            "maxLength": 150
+          }
+        },
+        "required": [
+          "serviceDate",
+          "description"
+        ]
+      },
+      "CreateRenewalDto": {
+        "type": "object",
+        "properties": {
+          "renewalType": {
+            "type": "string",
+            "enum": [
+              "road_licence",
+              "inspection_certificate",
+              "psv_permit",
+              "insurance",
+              "road_worthiness",
+              "other"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "issueDate": {
+            "type": "string"
+          },
+          "expiryDate": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number",
+            "minimum": 0
+          },
+          "provider": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "renewalType",
+          "expiryDate"
+        ]
+      },
+      "CreateAccidentDto": {
+        "type": "object",
+        "properties": {
+          "accidentDate": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "minor",
+              "moderate",
+              "major",
+              "total_loss"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "driverEmployeeId": {
+            "type": "string"
+          },
+          "thirdPartyInvolved": {
+            "type": "boolean"
+          },
+          "estimatedCost": {
+            "type": "number",
+            "minimum": 0
+          },
+          "insuranceClaimReference": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "policeReportReference": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "accidentDate",
+          "severity",
+          "description"
+        ]
+      },
+      "CreateVehicleExpenseDto": {
+        "type": "object",
+        "properties": {
+          "expenseDate": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "fuel",
+              "service",
+              "repair",
+              "licence",
+              "insurance",
+              "tyres",
+              "toll",
+              "fine",
+              "parking",
+              "other"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 1
+          },
+          "odometer": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "expenseDate",
+          "category",
+          "amount"
+        ]
+      },
       "CreateProjectDto": {
         "type": "object",
         "properties": {
@@ -14301,24 +15560,6 @@
         },
         "required": [
           "companyId"
-        ]
-      },
-      "AssignDriverDto": {
-        "type": "object",
-        "properties": {
-          "driverId": {
-            "type": "string"
-          },
-          "scheduledDate": {
-            "type": "string"
-          },
-          "note": {
-            "type": "string",
-            "maxLength": 500
-          }
-        },
-        "required": [
-          "driverId"
         ]
       },
       "AdvanceDeliveryStatusDto": {

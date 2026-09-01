@@ -29,6 +29,7 @@ export const ROUTE_CAPABILITIES = {
   '/products': ['product.manage', 'product.viewAll'],
   '/orders': ['sales.order.manage', 'sales.order.viewAll'],
   '/inventory': ['product.manage', 'product.viewAll'],
+  '/fleet': ['fleet.manage', 'fleet.viewAll'],
   '/customers': ['customer.manage', 'customer.viewAll'],
   '/support-tickets': ['support.ticket.manage', 'support.ticket.viewAll'],
   '/marketing': ['marketing.manage', 'marketing.viewAll'],

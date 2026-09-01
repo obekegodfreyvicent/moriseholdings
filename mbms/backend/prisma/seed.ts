@@ -149,6 +149,12 @@ const PERMISSIONS = [
   // lifecycle, capture proof of delivery, and manage the driver pool.
   { code: 'delivery.manage', domain: 'operations', description: 'Create deliveries for customer orders, assign and reassign delivery personas (drivers/couriers), advance the delivery lifecycle, capture proof of delivery, and manage the Morise Logistics Ltd driver pool, within your scope.' },
   { code: 'delivery.viewAll', domain: 'operations', description: 'View every delivery, delivery persona and dispatch metric group-wide, not only those in your own scope.' },
+  // Fleet & Vehicle Management (2 September 2026). manage = register /
+  // update vehicles, assign drivers, log fuel / odometer, manage service
+  // schedules and records, renewals, accident records and vehicle
+  // expenses, within your scope. viewAll = the group-wide fleet view.
+  { code: 'fleet.manage', domain: 'operations', description: 'Register and update vehicles, assign drivers, log fuel and odometer readings, manage service schedules and records, statutory renewals, accident records and vehicle expenses, within your scope.' },
+  { code: 'fleet.viewAll', domain: 'operations', description: 'View every vehicle, its logs and the fleet reports group-wide, not only those in your own scope.' },
 ];
 
 // Sprint 1+2+3 (+ basic accounting/dashboard) wires permissions only for the
@@ -645,6 +651,20 @@ for (const r of ['Super Administrator', 'Managing Director', 'IT Administrator',
 ROLE_PERMISSIONS['Branch Manager'].push('delivery.manage');
 for (const r of ['Group CEO', 'Auditor', 'External Auditor', 'Board Member', 'Read-only User']) {
   ROLE_PERMISSIONS[r].push('delivery.viewAll');
+}
+
+// Fleet & Vehicle Management (2 September 2026) — same shape as delivery.*
+// above. manage + viewAll to the group operational leads; manage (own
+// scope) to Branch Manager (a branch runs vehicles) and the Warehouse
+// Manager (dispatch / haulage is theirs — the same match that gave them
+// product.manage); viewAll to the oversight roles.
+for (const r of ['Super Administrator', 'Managing Director', 'IT Administrator', 'Operations Manager']) {
+  ROLE_PERMISSIONS[r].push('fleet.manage', 'fleet.viewAll');
+}
+ROLE_PERMISSIONS['Branch Manager'].push('fleet.manage');
+ROLE_PERMISSIONS['Warehouse Manager'].push('fleet.manage');
+for (const r of ['Group CEO', 'Auditor', 'External Auditor', 'Board Member', 'Read-only User']) {
+  ROLE_PERMISSIONS[r].push('fleet.viewAll');
 }
 
 async function main() {
@@ -1800,6 +1820,123 @@ async function main() {
         },
       });
     }
+  }
+
+  // ============ Fleet & Vehicle Management (2 September 2026) ============
+  // Three vehicles for Morise Agro Ltd (one linked to the Hilux asset), a
+  // driver assignment, fuel logs (so fuel economy computes), a service
+  // schedule + records, renewals (one expired), an accident, and rolled-up
+  // vehicle expenses.
+  console.log('Seeding Fleet & Vehicle Management: vehicles, driver, fuel logs, service, renewals, an accident (2 September 2026)...');
+
+  if ((await prisma.vehicle.count({ where: { companyId: agro.id } })) === 0) {
+    const hiluxAssetRow = await prisma.asset.findFirst({ where: { companyId: agro.id, assetNumber: 'AST-0001' } });
+    const kiraBranch = 'b1000000-0000-4000-8000-000000000001';
+
+    const hiluxVeh = await prisma.vehicle.create({
+      data: {
+        companyId: agro.id, branchId: kiraBranch, assetId: hiluxAssetRow?.id ?? null,
+        registrationNumber: 'UAX 123A', make: 'Toyota', model: 'Hilux', year: 2025, colour: 'White',
+        fuelType: 'diesel', ownershipType: 'owned', acquisitionDate: new Date('2025-02-01'),
+        currentOdometer: 47_250, createdBy: mathias.id,
+        lastLocationText: 'Kira HQ yard', lastLocationAt: new Date('2026-08-30'),
+      },
+    });
+    const isuzuVeh = await prisma.vehicle.create({
+      data: {
+        companyId: agro.id, branchId: kiraBranch,
+        registrationNumber: 'UBG 456B', make: 'Isuzu', model: 'FRR', year: 2021, colour: 'Blue',
+        fuelType: 'diesel', ownershipType: 'owned', acquisitionDate: new Date('2021-08-15'),
+        currentOdometer: 112_400, createdBy: mathias.id,
+      },
+    });
+    await prisma.vehicle.create({
+      data: {
+        companyId: agro.id, branchId: kiraBranch,
+        registrationNumber: 'UAP 789C', make: 'Toyota', model: 'HiAce', year: 2020, colour: 'Silver',
+        fuelType: 'petrol', ownershipType: 'leased', ownerName: 'Rentco Uganda Ltd',
+        acquisitionDate: new Date('2024-01-01'), currentOdometer: 88_900, createdBy: mathias.id,
+      },
+    });
+
+    // Driver assignment (Hilux -> David Ssenyonga).
+    if (david) {
+      await prisma.vehicleDriverAssignment.create({
+        data: { vehicleId: hiluxVeh.id, driverEmployeeId: david.id, startDate: new Date('2026-01-01'), createdBy: mathias.id },
+      });
+    }
+
+    // Fuel logs on the Hilux — three full-to-full fills with odometers.
+    const fuelSpecs: [string, number, number, number][] = [
+      ['2026-06-05', 50, 295_000, 46_000],
+      ['2026-07-02', 48, 288_000, 46_620],
+      ['2026-08-01', 55, 330_000, 47_250],
+    ];
+    for (const [d, litres, cost, odo] of fuelSpecs) {
+      const fl = await prisma.fuelLog.create({
+        data: { vehicleId: hiluxVeh.id, logDate: new Date(d), litres, cost, odometer: odo, fuelStation: 'Shell Kira', filledToFull: true, createdBy: mathias.id },
+      });
+      await prisma.vehicleOdometerReading.create({
+        data: { vehicleId: hiluxVeh.id, readingDate: new Date(d), odometer: odo, source: 'fuel', createdBy: mathias.id },
+      });
+      await prisma.vehicleExpense.create({
+        data: { vehicleId: hiluxVeh.id, expenseDate: new Date(d), category: 'fuel', amount: cost, odometer: odo, reference: 'Shell Kira', sourceType: 'fuel_log', sourceId: fl.id, createdBy: mathias.id },
+      });
+    }
+
+    // Service schedule + a completed service on the Hilux (now overdue).
+    const sched = await prisma.serviceSchedule.create({
+      data: {
+        vehicleId: hiluxVeh.id, name: '10,000 km / 6-month service', intervalKm: 10_000, intervalDays: 182,
+        lastServiceOdometer: 40_000, lastServiceDate: new Date('2025-12-01'),
+        nextDueOdometer: 50_000, nextDueDate: new Date('2026-06-01'), createdBy: mathias.id,
+      },
+    });
+    const svc = await prisma.serviceRecord.create({
+      data: {
+        vehicleId: hiluxVeh.id, scheduleId: sched.id, serviceDate: new Date('2025-12-01'), odometer: 40_000,
+        kind: 'service', description: 'Oil, filters, brake check', cost: 450_000, provider: 'Toyota Uganda', createdBy: mathias.id,
+      },
+    });
+    await prisma.vehicleExpense.create({
+      data: { vehicleId: hiluxVeh.id, expenseDate: new Date('2025-12-01'), category: 'service', amount: 450_000, odometer: 40_000, reference: 'Toyota Uganda', sourceType: 'service_record', sourceId: svc.id, createdBy: mathias.id },
+    });
+
+    // A repair on the Isuzu.
+    const rep = await prisma.serviceRecord.create({
+      data: {
+        vehicleId: isuzuVeh.id, serviceDate: new Date('2026-07-10'), odometer: 110_800, kind: 'repair',
+        description: 'Clutch replacement', cost: 1_800_000, provider: 'City Auto Garage', createdBy: mathias.id,
+      },
+    });
+    await prisma.vehicleExpense.create({
+      data: { vehicleId: isuzuVeh.id, expenseDate: new Date('2026-07-10'), category: 'repair', amount: 1_800_000, odometer: 110_800, reference: 'City Auto Garage', sourceType: 'service_record', sourceId: rep.id, createdBy: mathias.id },
+    });
+
+    // Renewals — Hilux road licence due soon, Isuzu road licence expired.
+    const renSpecs: [string, 'road_licence' | 'inspection_certificate', string, string, number][] = [
+      [hiluxVeh.id, 'road_licence', 'RL-2026-Hilux', '2026-09-25', 180_000],
+      [hiluxVeh.id, 'inspection_certificate', 'IC-2026-Hilux', '2027-02-01', 60_000],
+      [isuzuVeh.id, 'road_licence', 'RL-2026-Isuzu', '2026-06-30', 260_000],
+    ];
+    for (const [vid, type, ref, expiry, cost] of renSpecs) {
+      const rn = await prisma.vehicleRenewal.create({
+        data: { vehicleId: vid, renewalType: type, reference: ref, expiryDate: new Date(expiry), cost, provider: 'URA / Ministry of Works', createdBy: mathias.id },
+      });
+      await prisma.vehicleExpense.create({
+        data: { vehicleId: vid, expenseDate: new Date(expiry), category: 'licence', amount: cost, reference: ref, sourceType: 'renewal', sourceId: rn.id, createdBy: mathias.id },
+      });
+    }
+
+    // An accident on the Isuzu, unresolved.
+    await prisma.accidentRecord.create({
+      data: {
+        vehicleId: isuzuVeh.id, accidentDate: new Date('2026-05-20'), location: 'Kira roundabout',
+        severity: 'moderate', description: 'Rear-ended a boda while braking for traffic; rear bumper and tail light damaged.',
+        driverEmployeeId: david?.id ?? null, thirdPartyInvolved: true, estimatedCost: 900_000,
+        insuranceClaimReference: 'JIU-CLM-2026-0442', policeReportReference: 'Kira CPS SD 12/20-05-2026', createdBy: mathias.id,
+      },
+    });
   }
 
   console.log('Seeding starter projects for Morise Agro Ltd (Sprint 12)...');

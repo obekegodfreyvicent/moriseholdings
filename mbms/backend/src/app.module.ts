@@ -20,6 +20,7 @@ import { CmsModule } from './cms/cms.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { AssetsModule } from './assets/assets.module';
+import { FleetModule } from './fleet/fleet.module';
 import { ProjectsModule } from './projects/projects.module';
 import { ReportsModule } from './reports/reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -65,6 +66,7 @@ import { HealthController } from './health.controller';
     AccountingModule,
     ExpensesModule,
     AssetsModule,
+    FleetModule,
     ProjectsModule,
     ReportsModule,
     DashboardModule,
