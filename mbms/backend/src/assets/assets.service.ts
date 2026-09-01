@@ -6,13 +6,18 @@ import { AuthenticatedUser } from '../common/strategies/jwt.strategy';
 import { hasGroupVisibility, isCompanyInScope } from '../common/scope.util';
 import {
   ApproveDisposalDto,
+  CreateAssetCategoryDto,
   CreateAssetDto,
+  CreateAssetInspectionDto,
+  CreateAssetInsuranceDto,
   CreateMaintenanceRecordDto,
   DisposeAssetDto,
   RecordDepreciationDto,
   RequestDisposalDto,
   TransferAssetDto,
+  UpdateAssetCategoryDto,
   UpdateAssetDto,
+  UpdateAssetInsuranceDto,
 } from './dto/asset.dto';
 import { AuditService } from '../common/audit/audit.service';
 import { NotificationsService } from '../common/notifications/notifications.service';
@@ -33,6 +38,12 @@ function toResource(a: any) {
     category: a.category,
     description: a.description,
     custodianEmployeeId: a.custodianEmployeeId,
+    categoryId: a.categoryId,
+    categoryName: a.assetCategory?.name ?? a.category ?? null,
+    supplierId: a.supplierId,
+    supplierName: a.supplier?.name ?? null,
+    purchaseReference: a.purchaseReference,
+    warrantyExpiryDate: a.warrantyExpiryDate,
     purchaseDate: a.purchaseDate,
     purchaseCost: purchaseCost.toFixed(2),
     accumulatedDepreciation: accumulatedDepreciation.toFixed(2),
@@ -112,6 +123,7 @@ export class AssetsService {
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.asset.findMany({
         where,
+        include: { assetCategory: true, supplier: true },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -139,22 +151,70 @@ export class AssetsService {
         throw new NotFoundAppException('Custodian employee not found for this company.');
       }
     }
+    if (dto.supplierId) {
+      const supplier = await this.prisma.supplier.findUnique({ where: { id: dto.supplierId } });
+      if (!supplier || supplier.companyId !== dto.companyId) {
+        throw new NotFoundAppException('Supplier not found for this company.');
+      }
+    }
+
+    // Asset Management (2 September 2026): inherit depreciation defaults from
+    // the category when the registration doesn't override them.
+    let category: any = null;
+    if (dto.categoryId) {
+      category = await this.prisma.assetCategory.findUnique({ where: { id: dto.categoryId } });
+      if (!category || category.companyId !== dto.companyId) {
+        throw new NotFoundAppException('Asset category not found for this company.');
+      }
+    }
+    const depreciationMethod =
+      dto.depreciationMethod ?? category?.defaultDepreciationMethod ?? 'none';
+    const usefulLifeYears = dto.usefulLifeYears ?? category?.defaultUsefulLifeYears ?? undefined;
+    const salvageValue =
+      dto.salvageValue ??
+      (category?.defaultSalvagePercent != null
+        ? Math.round(dto.purchaseCost * (Number(category.defaultSalvagePercent) / 100) * 100) / 100
+        : 0);
+
+    // Auto-number: AST-YYYY-NNNN, from a per-company count, retrying on a
+    // unique clash (matches the JE-numbering convention elsewhere).
+    let assetNumber = dto.assetNumber?.trim();
+    if (!assetNumber) {
+      const year = new Date().getFullYear();
+      let n = (await this.prisma.asset.count({ where: { companyId: dto.companyId } })) + 1;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const candidate = `AST-${year}-${String(n).padStart(4, '0')}`;
+        const exists = await this.prisma.asset.findFirst({
+          where: { companyId: dto.companyId, assetNumber: candidate },
+        });
+        if (!exists) {
+          assetNumber = candidate;
+          break;
+        }
+        n += 1;
+      }
+    }
 
     const asset = await this.prisma.asset.create({
       data: {
         companyId: dto.companyId,
         branchId: dto.branchId,
         departmentId: dto.departmentId,
-        assetNumber: dto.assetNumber,
+        assetNumber,
         name: dto.name,
-        category: dto.category,
+        category: dto.category ?? category?.name ?? null,
+        categoryId: dto.categoryId ?? null,
         description: dto.description,
         custodianEmployeeId: dto.custodianEmployeeId,
+        supplierId: dto.supplierId ?? null,
+        purchaseReference: dto.purchaseReference ?? null,
+        warrantyExpiryDate: dto.warrantyExpiryDate ? new Date(dto.warrantyExpiryDate) : undefined,
         purchaseDate: new Date(dto.purchaseDate),
         purchaseCost: dto.purchaseCost,
-        depreciationMethod: (dto.depreciationMethod as any) ?? 'none',
-        usefulLifeYears: dto.usefulLifeYears,
-        salvageValue: dto.salvageValue ?? 0,
+        depreciationMethod: depreciationMethod as any,
+        usefulLifeYears,
+        salvageValue,
         assetAccountId: dto.assetAccountId,
         depreciationExpenseAccountId: dto.depreciationExpenseAccountId,
         accumulatedDepreciationAccountId: dto.accumulatedDepreciationAccountId,
@@ -163,6 +223,7 @@ export class AssetsService {
         insuranceExpiryDate: dto.insuranceExpiryDate ? new Date(dto.insuranceExpiryDate) : undefined,
         documentReference: dto.documentReference,
       },
+      include: { assetCategory: true, supplier: true },
     });
     await this.auditService.record({
       eventType: 'asset.record.created',
@@ -174,6 +235,14 @@ export class AssetsService {
       action: 'create',
       newValue: { assetNumber: asset.assetNumber, name: asset.name, purchaseCost: asset.purchaseCost.toString() },
     });
+    await this.logEvent(
+      asset.id,
+      asset.companyId,
+      'registered',
+      `Registered ${asset.assetNumber} — ${asset.name}`,
+      { purchaseCost: asset.purchaseCost.toString(), category: asset.category, supplierId: asset.supplierId },
+      user.id,
+    );
     return toResource(asset);
   }
 
@@ -192,12 +261,35 @@ export class AssetsService {
     if (!isCompanyInScope(user, asset.companyId, GROUP_PERM)) {
       throw new NotFoundAppException('Asset not found.');
     }
+    if (dto.categoryId) {
+      const c = await this.prisma.assetCategory.findUnique({ where: { id: dto.categoryId } });
+      if (!c || c.companyId !== asset.companyId) throw new NotFoundAppException('Asset category not found.');
+    }
+    if (dto.supplierId) {
+      const s = await this.prisma.supplier.findUnique({ where: { id: dto.supplierId } });
+      if (!s || s.companyId !== asset.companyId) throw new NotFoundAppException('Supplier not found.');
+    }
+    if (dto.custodianEmployeeId) {
+      const e = await this.prisma.employee.findUnique({ where: { id: dto.custodianEmployeeId } });
+      if (!e || e.companyId !== asset.companyId) throw new NotFoundAppException('Custodian employee not found.');
+    }
+
+    const data: any = {};
+    for (const k of ['name', 'category', 'description', 'insurer', 'insurancePolicyNumber', 'documentReference', 'purchaseReference'] as const) {
+      if (dto[k] !== undefined) data[k] = dto[k];
+    }
+    if ('categoryId' in dto) data.categoryId = dto.categoryId ?? null;
+    if ('supplierId' in dto) data.supplierId = dto.supplierId ?? null;
+    if ('branchId' in dto) data.branchId = dto.branchId ?? null;
+    if ('departmentId' in dto) data.departmentId = dto.departmentId ?? null;
+    if ('custodianEmployeeId' in dto) data.custodianEmployeeId = dto.custodianEmployeeId ?? null;
+    if (dto.insuranceExpiryDate) data.insuranceExpiryDate = new Date(dto.insuranceExpiryDate);
+    if (dto.warrantyExpiryDate) data.warrantyExpiryDate = new Date(dto.warrantyExpiryDate);
+
     const updated = await this.prisma.asset.update({
       where: { id },
-      data: {
-        ...dto,
-        insuranceExpiryDate: dto.insuranceExpiryDate ? new Date(dto.insuranceExpiryDate) : undefined,
-      },
+      data,
+      include: { assetCategory: true, supplier: true },
     });
     await this.auditService.record({
       eventType: 'asset.record.updated',
@@ -207,9 +299,10 @@ export class AssetsService {
       entityType: 'asset',
       entityId: updated.id,
       action: 'update',
-      previousValue: { category: asset.category },
-      newValue: { category: updated.category },
+      previousValue: { category: asset.category, categoryId: asset.categoryId, custodianEmployeeId: asset.custodianEmployeeId },
+      newValue: { category: updated.category, categoryId: updated.categoryId, custodianEmployeeId: updated.custodianEmployeeId },
     });
+    await this.logEvent(updated.id, updated.companyId, 'updated', `Asset record updated`, { fields: Object.keys(data) }, user.id);
     return toResource(updated);
   }
 
@@ -268,6 +361,16 @@ export class AssetsService {
       previousValue: { companyId: asset.companyId, branchId: asset.branchId, custodianEmployeeId: asset.custodianEmployeeId },
       newValue: { companyId: updated.companyId, branchId: updated.branchId, custodianEmployeeId: updated.custodianEmployeeId },
     });
+    await this.logEvent(
+      updated.id,
+      updated.companyId,
+      'transferred',
+      dto.toCompanyId && dto.toCompanyId !== asset.companyId
+        ? `Transferred to another company`
+        : `Relocated / custodian reassigned`,
+      { fromCompanyId: asset.companyId, toCompanyId: updated.companyId, fromBranchId: asset.branchId, toBranchId: updated.branchId },
+      user.id,
+    );
     return toResource(updated);
   }
 
@@ -340,6 +443,14 @@ export class AssetsService {
       previousValue: { accumulatedDepreciation: asset.accumulatedDepreciation.toString() },
       newValue: { accumulatedDepreciation: updated.accumulatedDepreciation.toString(), amount: dto.amount },
     });
+    await this.logEvent(
+      updated.id,
+      updated.companyId,
+      'depreciation',
+      `Depreciation ${dto.amount.toFixed(2)} recorded`,
+      { amount: dto.amount, accumulatedDepreciation: updated.accumulatedDepreciation.toString(), entryDate: dto.entryDate },
+      user.id,
+    );
     return toResource(updated);
   }
 
@@ -382,6 +493,7 @@ export class AssetsService {
       entityType: 'asset',
       entityId: updated.id,
     });
+    await this.logEvent(updated.id, updated.companyId, 'disposal_requested', `Disposal requested`, { reason: dto.reason ?? null }, user.id);
     return toResource(updated);
   }
 
@@ -416,6 +528,7 @@ export class AssetsService {
       previousValue: { status: 'disposal_requested' },
       newValue: { status: 'disposal_approved' },
     });
+    await this.logEvent(updated.id, updated.companyId, 'disposal_approved', `Disposal approved`, { inspectionNotes: dto.inspectionNotes ?? null }, user.id);
     return toResource(updated);
   }
 
@@ -521,6 +634,14 @@ export class AssetsService {
         entityId: updated.id,
       });
     }
+    await this.logEvent(
+      updated.id,
+      updated.companyId,
+      'disposed',
+      `Disposed (${dto.disposalMethod}) — ${gainLoss >= 0 ? 'gain' : 'loss'} ${Math.abs(gainLoss).toFixed(2)}`,
+      { disposalMethod: dto.disposalMethod, disposalProceeds: dto.disposalProceeds, gainLoss: gainLoss.toFixed(2), journalEntryId: updated.disposalJournalEntryId },
+      user.id,
+    );
     return toResource(updated);
   }
 
@@ -589,6 +710,14 @@ export class AssetsService {
       action: 'create',
       newValue: { description: dto.description, cost: dto.cost, journalEntryId },
     });
+    await this.logEvent(
+      asset.id,
+      asset.companyId,
+      'maintenance',
+      `Maintenance logged — ${dto.description}`.slice(0, 250),
+      { cost: dto.cost ?? null, journalEntryId: journalEntryId ?? null, maintenanceDate: dto.maintenanceDate },
+      user.id,
+    );
     return toMaintenanceResource(record);
   }
 
@@ -605,6 +734,430 @@ export class AssetsService {
     return rows.map(toMaintenanceResource);
   }
 
+  // ==================== Asset Management (2 September 2026) ====================
+
+  private catResource(c: any) {
+    return {
+      id: c.id,
+      companyId: c.companyId,
+      code: c.code,
+      name: c.name,
+      defaultDepreciationMethod: c.defaultDepreciationMethod,
+      defaultUsefulLifeYears: c.defaultUsefulLifeYears,
+      defaultSalvagePercent: c.defaultSalvagePercent != null ? Number(c.defaultSalvagePercent) : null,
+      note: c.note,
+      isActive: c.isActive,
+      assetCount: c._count?.assets,
+    };
+  }
+
+  private companyFilter(user: AuthenticatedUser, companyId?: string) {
+    if (hasGroupVisibility(user, GROUP_PERM)) return companyId ? { companyId } : {};
+    const scoped = user.scopes.map((s) => s.companyId);
+    return {
+      companyId:
+        companyId && scoped.includes(companyId)
+          ? companyId
+          : { in: scoped.length > 0 ? scoped : ['__none__'] },
+    };
+  }
+
+  // GET /assets/categories
+  async listCategories(user: AuthenticatedUser, companyId?: string) {
+    const rows = await this.prisma.assetCategory.findMany({
+      where: { ...this.companyFilter(user, companyId) } as any,
+      include: { _count: { select: { assets: true } } },
+      orderBy: { code: 'asc' },
+    });
+    return rows.map((c) => this.catResource(c));
+  }
+
+  // POST /assets/categories
+  async createCategory(user: AuthenticatedUser, dto: CreateAssetCategoryDto) {
+    if (!isCompanyInScope(user, dto.companyId, GROUP_PERM)) {
+      throw new NotFoundAppException('Company not found.');
+    }
+    const code = dto.code.trim().toUpperCase();
+    const clash = await this.prisma.assetCategory.findUnique({
+      where: { companyId_code: { companyId: dto.companyId, code } },
+    });
+    if (clash) throw new ConflictAppException(`Category code ${code} is already in use.`);
+    const created = await this.prisma.assetCategory.create({
+      data: {
+        companyId: dto.companyId,
+        code,
+        name: dto.name.trim(),
+        defaultDepreciationMethod: (dto.defaultDepreciationMethod as any) ?? 'none',
+        defaultUsefulLifeYears: dto.defaultUsefulLifeYears ?? null,
+        defaultSalvagePercent: dto.defaultSalvagePercent ?? null,
+        note: dto.note ?? null,
+      },
+      include: { _count: { select: { assets: true } } },
+    });
+    await this.auditService.record({
+      eventType: 'asset.category.created',
+      sourceService: 'asset-service',
+      userId: user.id,
+      companyId: dto.companyId,
+      entityType: 'asset_category',
+      entityId: created.id,
+      action: 'create',
+      newValue: { code: created.code, name: created.name },
+    });
+    return this.catResource(created);
+  }
+
+  // PATCH /assets/categories/:id
+  async updateCategory(user: AuthenticatedUser, id: string, dto: UpdateAssetCategoryDto) {
+    const cat = await this.prisma.assetCategory.findUnique({ where: { id } });
+    if (!cat || !isCompanyInScope(user, cat.companyId, GROUP_PERM)) {
+      throw new NotFoundAppException('Asset category not found.');
+    }
+    const data: any = {};
+    if (dto.name !== undefined) data.name = dto.name.trim();
+    if (dto.defaultDepreciationMethod !== undefined) data.defaultDepreciationMethod = dto.defaultDepreciationMethod;
+    if ('defaultUsefulLifeYears' in dto) data.defaultUsefulLifeYears = dto.defaultUsefulLifeYears ?? null;
+    if ('defaultSalvagePercent' in dto) data.defaultSalvagePercent = dto.defaultSalvagePercent ?? null;
+    if (dto.note !== undefined) data.note = dto.note;
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    const updated = await this.prisma.assetCategory.update({
+      where: { id },
+      data,
+      include: { _count: { select: { assets: true } } },
+    });
+    await this.auditService.record({
+      eventType: 'asset.category.updated',
+      sourceService: 'asset-service',
+      userId: user.id,
+      companyId: cat.companyId,
+      entityType: 'asset_category',
+      entityId: id,
+      action: 'update',
+      newValue: { name: updated.name, isActive: updated.isActive },
+    });
+    return this.catResource(updated);
+  }
+
+  // GET /assets/:id/inspections
+  async listInspections(user: AuthenticatedUser, assetId: string) {
+    const asset = await this.findOrThrow(assetId);
+    if (!isCompanyInScope(user, asset.companyId, GROUP_PERM)) throw new NotFoundAppException('Asset not found.');
+    return this.prisma.assetInspection.findMany({
+      where: { assetId },
+      orderBy: { inspectionDate: 'desc' },
+    });
+  }
+
+  // POST /assets/:id/inspections
+  async addInspection(user: AuthenticatedUser, assetId: string, dto: CreateAssetInspectionDto) {
+    const asset = await this.findOrThrow(assetId);
+    if (!isCompanyInScope(user, asset.companyId, GROUP_PERM)) throw new NotFoundAppException('Asset not found.');
+    if (dto.inspectorEmployeeId) {
+      const e = await this.prisma.employee.findUnique({ where: { id: dto.inspectorEmployeeId } });
+      if (!e || e.companyId !== asset.companyId) throw new NotFoundAppException('Inspector employee not found.');
+    }
+    const created = await this.prisma.assetInspection.create({
+      data: {
+        assetId,
+        inspectionDate: new Date(dto.inspectionDate),
+        inspectorEmployeeId: dto.inspectorEmployeeId ?? null,
+        condition: dto.condition as any,
+        findings: dto.findings ?? null,
+        actionRequired: dto.actionRequired ?? null,
+        nextInspectionDate: dto.nextInspectionDate ? new Date(dto.nextInspectionDate) : null,
+        createdBy: user.id,
+      },
+    });
+    await this.auditService.record({
+      eventType: 'asset.inspection.recorded',
+      sourceService: 'asset-service',
+      userId: user.id,
+      companyId: asset.companyId,
+      entityType: 'asset',
+      entityId: asset.id,
+      action: 'create',
+      newValue: { condition: dto.condition, nextInspectionDate: dto.nextInspectionDate ?? null },
+    });
+    await this.logEvent(
+      asset.id,
+      asset.companyId,
+      'inspection',
+      `Inspection — condition ${dto.condition}`,
+      { condition: dto.condition, actionRequired: dto.actionRequired ?? null, nextInspectionDate: dto.nextInspectionDate ?? null },
+      user.id,
+    );
+    return created;
+  }
+
+  // GET /assets/:id/insurance
+  async listInsurance(user: AuthenticatedUser, assetId: string) {
+    const asset = await this.findOrThrow(assetId);
+    if (!isCompanyInScope(user, asset.companyId, GROUP_PERM)) throw new NotFoundAppException('Asset not found.');
+    const rows = await this.prisma.assetInsurancePolicy.findMany({
+      where: { assetId },
+      orderBy: { endDate: 'desc' },
+    });
+    return rows.map((p) => ({
+      ...p,
+      coverageAmount: Number(p.coverageAmount).toFixed(2),
+      premium: p.premium != null ? Number(p.premium).toFixed(2) : null,
+    }));
+  }
+
+  // POST /assets/:id/insurance
+  async addInsurance(user: AuthenticatedUser, assetId: string, dto: CreateAssetInsuranceDto) {
+    const asset = await this.findOrThrow(assetId);
+    if (!isCompanyInScope(user, asset.companyId, GROUP_PERM)) throw new NotFoundAppException('Asset not found.');
+    if (new Date(dto.endDate) < new Date(dto.startDate)) {
+      throw new ConflictAppException('Policy end date is before its start date.');
+    }
+    const created = await this.prisma.assetInsurancePolicy.create({
+      data: {
+        assetId,
+        insurer: dto.insurer.trim(),
+        policyNumber: dto.policyNumber.trim(),
+        coverageAmount: dto.coverageAmount,
+        premium: dto.premium ?? null,
+        startDate: new Date(dto.startDate),
+        endDate: new Date(dto.endDate),
+        note: dto.note ?? null,
+        createdBy: user.id,
+      },
+    });
+    // Keep the legacy inline fields in step with the latest active policy.
+    await this.prisma.asset.update({
+      where: { id: assetId },
+      data: {
+        insurer: dto.insurer.trim(),
+        insurancePolicyNumber: dto.policyNumber.trim(),
+        insuranceExpiryDate: new Date(dto.endDate),
+      },
+    });
+    await this.auditService.record({
+      eventType: 'asset.insurance.added',
+      sourceService: 'asset-service',
+      userId: user.id,
+      companyId: asset.companyId,
+      entityType: 'asset',
+      entityId: asset.id,
+      action: 'create',
+      newValue: { insurer: dto.insurer, policyNumber: dto.policyNumber, endDate: dto.endDate },
+    });
+    await this.logEvent(
+      asset.id,
+      asset.companyId,
+      'insurance_added',
+      `Insurance policy ${dto.policyNumber} (${dto.insurer})`,
+      { coverageAmount: dto.coverageAmount, startDate: dto.startDate, endDate: dto.endDate },
+      user.id,
+    );
+    return { ...created, coverageAmount: Number(created.coverageAmount).toFixed(2) };
+  }
+
+  // PATCH /assets/insurance/:policyId
+  async updateInsurance(user: AuthenticatedUser, policyId: string, dto: UpdateAssetInsuranceDto) {
+    const policy = await this.prisma.assetInsurancePolicy.findUnique({
+      where: { id: policyId },
+      include: { asset: true },
+    });
+    if (!policy || !isCompanyInScope(user, policy.asset.companyId, GROUP_PERM)) {
+      throw new NotFoundAppException('Insurance policy not found.');
+    }
+    const data: any = {};
+    for (const k of ['insurer', 'policyNumber', 'note', 'status'] as const) {
+      if (dto[k] !== undefined) data[k] = k === 'status' ? (dto[k] as any) : dto[k];
+    }
+    if (dto.coverageAmount !== undefined) data.coverageAmount = dto.coverageAmount;
+    if (dto.premium !== undefined) data.premium = dto.premium;
+    if (dto.startDate) data.startDate = new Date(dto.startDate);
+    if (dto.endDate) data.endDate = new Date(dto.endDate);
+    const updated = await this.prisma.assetInsurancePolicy.update({ where: { id: policyId }, data });
+    await this.auditService.record({
+      eventType: 'asset.insurance.updated',
+      sourceService: 'asset-service',
+      userId: user.id,
+      companyId: policy.asset.companyId,
+      entityType: 'asset',
+      entityId: policy.assetId,
+      action: 'update',
+      newValue: { status: updated.status, endDate: updated.endDate },
+    });
+    await this.logEvent(policy.assetId, policy.asset.companyId, 'insurance_updated', `Insurance policy ${updated.policyNumber} updated`, { status: updated.status }, user.id);
+    return { ...updated, coverageAmount: Number(updated.coverageAmount).toFixed(2), premium: updated.premium != null ? Number(updated.premium).toFixed(2) : null };
+  }
+
+  // GET /assets/:id/history
+  async history(user: AuthenticatedUser, assetId: string) {
+    const asset = await this.findOrThrow(assetId);
+    if (!isCompanyInScope(user, asset.companyId, GROUP_PERM)) throw new NotFoundAppException('Asset not found.');
+    const events = await this.prisma.assetEvent.findMany({
+      where: { assetId },
+      orderBy: { occurredAt: 'asc' },
+    });
+    return events.map((e) => ({
+      id: e.id,
+      eventType: e.eventType,
+      occurredAt: e.occurredAt,
+      summary: e.summary,
+      detail: e.detail ?? null,
+      createdBy: e.createdBy,
+    }));
+  }
+
+  // ---- Reports ---------------------------------------------------
+  private annualCharge(a: any) {
+    if (a.depreciationMethod !== 'straight_line' || !a.usefulLifeYears) return 0;
+    const depreciable = Number(a.purchaseCost) - Number(a.salvageValue ?? 0);
+    return Math.max(0, depreciable) / a.usefulLifeYears;
+  }
+
+  // GET /assets/reports/register
+  async reportRegister(user: AuthenticatedUser, companyId?: string) {
+    const rows = await this.prisma.asset.findMany({
+      where: { ...this.companyFilter(user, companyId), status: { not: 'disposed' } } as any,
+      include: { assetCategory: true, supplier: true },
+      orderBy: { assetNumber: 'asc' },
+      take: 5000,
+    });
+    const lines = rows.map((a) => {
+      const cost = Number(a.purchaseCost);
+      const acc = Number(a.accumulatedDepreciation);
+      return {
+        assetId: a.id,
+        assetNumber: a.assetNumber,
+        name: a.name,
+        categoryName: a.assetCategory?.name ?? a.category ?? null,
+        custodianEmployeeId: a.custodianEmployeeId,
+        branchId: a.branchId,
+        supplierName: a.supplier?.name ?? null,
+        purchaseDate: a.purchaseDate,
+        purchaseCost: cost.toFixed(2),
+        accumulatedDepreciation: acc.toFixed(2),
+        netBookValue: (cost - acc).toFixed(2),
+        status: a.status,
+      };
+    });
+    return {
+      lines,
+      totals: {
+        assets: lines.length,
+        purchaseCost: lines.reduce((s, l) => s + Number(l.purchaseCost), 0).toFixed(2),
+        accumulatedDepreciation: lines.reduce((s, l) => s + Number(l.accumulatedDepreciation), 0).toFixed(2),
+        netBookValue: lines.reduce((s, l) => s + Number(l.netBookValue), 0).toFixed(2),
+      },
+    };
+  }
+
+  // GET /assets/reports/depreciation-schedule
+  async reportDepreciationSchedule(user: AuthenticatedUser, companyId?: string) {
+    const rows = await this.prisma.asset.findMany({
+      where: { ...this.companyFilter(user, companyId), status: 'active', depreciationMethod: 'straight_line' } as any,
+      include: { assetCategory: true },
+      orderBy: { assetNumber: 'asc' },
+      take: 5000,
+    });
+    const lines = rows.map((a) => {
+      const cost = Number(a.purchaseCost);
+      const acc = Number(a.accumulatedDepreciation);
+      const salvage = Number(a.salvageValue ?? 0);
+      const annual = this.annualCharge(a);
+      const remainingDepreciable = Math.max(0, cost - salvage - acc);
+      return {
+        assetId: a.id,
+        assetNumber: a.assetNumber,
+        name: a.name,
+        categoryName: a.assetCategory?.name ?? a.category ?? null,
+        purchaseCost: cost.toFixed(2),
+        salvageValue: salvage.toFixed(2),
+        usefulLifeYears: a.usefulLifeYears,
+        annualCharge: annual.toFixed(2),
+        accumulatedDepreciation: acc.toFixed(2),
+        netBookValue: (cost - acc).toFixed(2),
+        remainingDepreciable: remainingDepreciable.toFixed(2),
+        yearsRemaining: annual > 0 ? Number((remainingDepreciable / annual).toFixed(2)) : null,
+      };
+    });
+    return {
+      lines,
+      totals: {
+        assets: lines.length,
+        annualCharge: lines.reduce((s, l) => s + Number(l.annualCharge), 0).toFixed(2),
+      },
+    };
+  }
+
+  // GET /assets/reports/insurance-expiring
+  async reportInsuranceExpiring(user: AuthenticatedUser, companyId?: string, days = 60) {
+    const window = Math.min(Math.max(days, 0), 3650);
+    const cutoff = new Date();
+    cutoff.setHours(23, 59, 59, 999);
+    cutoff.setDate(cutoff.getDate() + window);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const assets = await this.prisma.asset.findMany({
+      where: { ...this.companyFilter(user, companyId) } as any,
+      select: { id: true, assetNumber: true, name: true },
+    });
+    const assetById = new Map(assets.map((a) => [a.id, a]));
+    const policies = await this.prisma.assetInsurancePolicy.findMany({
+      where: { assetId: { in: assets.map((a) => a.id) }, status: 'active', endDate: { lte: cutoff } },
+      orderBy: { endDate: 'asc' },
+    });
+    return {
+      windowDays: window,
+      cutoff,
+      policies: policies.map((p) => ({
+        id: p.id,
+        assetId: p.assetId,
+        assetNumber: assetById.get(p.assetId)?.assetNumber ?? null,
+        assetName: assetById.get(p.assetId)?.name ?? null,
+        insurer: p.insurer,
+        policyNumber: p.policyNumber,
+        coverageAmount: Number(p.coverageAmount).toFixed(2),
+        endDate: p.endDate,
+        expired: new Date(p.endDate) < today,
+      })),
+    };
+  }
+
+  // GET /assets/reports/inspections-due
+  async reportInspectionsDue(user: AuthenticatedUser, companyId?: string, days = 30) {
+    const window = Math.min(Math.max(days, 0), 3650);
+    const cutoff = new Date();
+    cutoff.setHours(23, 59, 59, 999);
+    cutoff.setDate(cutoff.getDate() + window);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const assets = await this.prisma.asset.findMany({
+      where: { ...this.companyFilter(user, companyId), status: { not: 'disposed' } } as any,
+      select: { id: true, assetNumber: true, name: true },
+    });
+    const assetById = new Map(assets.map((a) => [a.id, a]));
+    // latest inspection per asset with a nextInspectionDate on/before the cutoff
+    const inspections = await this.prisma.assetInspection.findMany({
+      where: { assetId: { in: assets.map((a) => a.id) }, nextInspectionDate: { not: null, lte: cutoff } },
+      orderBy: { inspectionDate: 'desc' },
+    });
+    const seen = new Set<string>();
+    const due: any[] = [];
+    for (const i of inspections) {
+      if (seen.has(i.assetId)) continue;
+      seen.add(i.assetId);
+      due.push({
+        assetId: i.assetId,
+        assetNumber: assetById.get(i.assetId)?.assetNumber ?? null,
+        assetName: assetById.get(i.assetId)?.name ?? null,
+        lastInspectionDate: i.inspectionDate,
+        lastCondition: i.condition,
+        nextInspectionDate: i.nextInspectionDate,
+        overdue: i.nextInspectionDate ? new Date(i.nextInspectionDate) < today : false,
+      });
+    }
+    return { windowDays: window, cutoff, due };
+  }
+
   private async assertAccount(companyId: string, accountId: string, expectedType: string, field: string) {
     const account = await this.prisma.account.findUnique({ where: { id: accountId } });
     if (!account || account.companyId !== companyId || account.accountType !== expectedType) {
@@ -613,8 +1166,26 @@ export class AssetsService {
   }
 
   private async findOrThrow(id: string) {
-    const asset = await this.prisma.asset.findUnique({ where: { id } });
+    const asset = await this.prisma.asset.findUnique({
+      where: { id },
+      include: { assetCategory: true, supplier: true },
+    });
     if (!asset) throw new NotFoundAppException('Asset not found.');
     return asset;
+  }
+
+  // Append-only asset-history row. Written from every lifecycle action so
+  // GET /assets/:id/history is a single chronological read.
+  private async logEvent(
+    assetId: string,
+    companyId: string,
+    eventType: string,
+    summary: string,
+    detail: any,
+    userId: string,
+  ) {
+    await this.prisma.assetEvent.create({
+      data: { assetId, companyId, eventType: eventType as any, summary, detail: detail ?? undefined, createdBy: userId },
+    });
   }
 }

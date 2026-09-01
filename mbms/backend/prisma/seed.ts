@@ -1667,6 +1667,141 @@ async function main() {
     });
   }
 
+  // ============ Asset Management (2 September 2026) ============
+  // First-class asset categories with depreciation defaults, backfill of
+  // categoryId + supplier + an AssetEvent history for the seeded assets, an
+  // inspection and a first-class insurance policy.
+  console.log('Seeding Asset Management: categories, supplier link, an inspection, an insurance policy, history events (2 September 2026)...');
+
+  const assetCategorySpecs: [string, string, 'none' | 'straight_line', number | null, number | null][] = [
+    ['VEH', 'Vehicles', 'straight_line', 5, 10],
+    ['BLD', 'Buildings', 'straight_line', 40, 5],
+    ['COMP', 'Computers', 'straight_line', 3, 5],
+    ['MACH', 'Machinery', 'straight_line', 8, 5],
+    ['FURN', 'Furniture', 'straight_line', 7, 0],
+    ['EQUIP', 'Equipment', 'straight_line', 6, 5],
+    ['LAND', 'Land', 'none', null, null],
+    ['OFFEQ', 'Office Equipment', 'straight_line', 4, 5],
+  ];
+  const assetCatByCode = new Map<string, string>();
+  for (const [code, name, method, life, salvagePct] of assetCategorySpecs) {
+    const existing = await prisma.assetCategory.findFirst({ where: { companyId: agro.id, code } });
+    const row =
+      existing ??
+      (await prisma.assetCategory.create({
+        data: {
+          companyId: agro.id,
+          code,
+          name,
+          defaultDepreciationMethod: method,
+          defaultUsefulLifeYears: life,
+          defaultSalvagePercent: salvagePct,
+        },
+      }));
+    assetCatByCode.set(code, row.id);
+  }
+
+  const agroChemForAsset = await prisma.supplier.findFirst({
+    where: { companyId: agro.id, name: 'AgroChem Uganda Ltd' },
+  });
+  const seededAssets = await prisma.asset.findMany({ where: { companyId: agro.id } });
+  for (const a of seededAssets) {
+    const code =
+      a.assetNumber === 'AST-0001' ? 'VEH' : a.assetNumber === 'AST-0002' ? 'COMP' : 'OFFEQ';
+    await prisma.asset.update({
+      where: { id: a.id },
+      data: {
+        categoryId: a.categoryId ?? assetCatByCode.get(code) ?? null,
+        supplierId: a.supplierId ?? (a.assetNumber === 'AST-0001' ? null : agroChemForAsset?.id ?? null),
+        purchaseReference: a.purchaseReference ?? `PO-${a.assetNumber}`,
+      },
+    });
+    // Backfill a 'registered' history event if the asset has none.
+    if ((await prisma.assetEvent.count({ where: { assetId: a.id } })) === 0) {
+      await prisma.assetEvent.create({
+        data: {
+          assetId: a.id,
+          companyId: agro.id,
+          eventType: 'registered',
+          occurredAt: a.purchaseDate ?? a.createdAt,
+          summary: `Registered ${a.assetNumber} — ${a.name}`,
+          detail: { purchaseCost: a.purchaseCost.toString() },
+          createdBy: mathias.id,
+        },
+      });
+      if (a.status === 'disposed') {
+        await prisma.assetEvent.create({
+          data: {
+            assetId: a.id, companyId: agro.id, eventType: 'disposed',
+            occurredAt: a.disposedAt ?? a.updatedAt,
+            summary: `Disposed (${a.disposalMethod ?? 'sale'})`,
+            detail: { disposalProceeds: a.disposalProceeds?.toString() ?? null },
+            createdBy: mathias.id,
+          },
+        });
+      } else if (a.status === 'disposal_requested') {
+        await prisma.assetEvent.create({
+          data: {
+            assetId: a.id, companyId: agro.id, eventType: 'disposal_requested',
+            occurredAt: a.disposalRequestedAt ?? a.updatedAt,
+            summary: 'Disposal requested', detail: { reason: a.disposalRequestReason ?? null },
+            createdBy: kato.id,
+          },
+        });
+      }
+    }
+  }
+
+  // An inspection + a first-class insurance policy on the Hilux (AST-0001).
+  const hiluxAsset = seededAssets.find((a) => a.assetNumber === 'AST-0001');
+  if (hiluxAsset) {
+    if ((await prisma.assetInspection.count({ where: { assetId: hiluxAsset.id } })) === 0) {
+      await prisma.assetInspection.create({
+        data: {
+          assetId: hiluxAsset.id,
+          inspectionDate: new Date('2026-07-15'),
+          inspectorEmployeeId: david?.id ?? null,
+          condition: 'good',
+          findings: 'Tyres at 60%, service due at 60,000 km. Minor bodywork scratches, no rust.',
+          actionRequired: 'Schedule 60,000 km service; touch up paint.',
+          nextInspectionDate: new Date('2026-10-15'),
+          createdBy: mathias.id,
+        },
+      });
+      await prisma.assetEvent.create({
+        data: {
+          assetId: hiluxAsset.id, companyId: agro.id, eventType: 'inspection',
+          occurredAt: new Date('2026-07-15'), summary: 'Inspection — condition good',
+          detail: { condition: 'good', nextInspectionDate: '2026-10-15' }, createdBy: mathias.id,
+        },
+      });
+    }
+    if ((await prisma.assetInsurancePolicy.count({ where: { assetId: hiluxAsset.id } })) === 0) {
+      await prisma.assetInsurancePolicy.create({
+        data: {
+          assetId: hiluxAsset.id,
+          insurer: 'Jubilee Insurance (U) Ltd',
+          policyNumber: 'JIU-VEH-88213',
+          coverageAmount: 45_000_000,
+          premium: 2_250_000,
+          startDate: new Date('2026-02-01'),
+          endDate: new Date('2027-01-31'),
+          status: 'active',
+          note: 'Comprehensive motor cover, third-party UGX 50M.',
+          createdBy: mathias.id,
+        },
+      });
+      await prisma.assetEvent.create({
+        data: {
+          assetId: hiluxAsset.id, companyId: agro.id, eventType: 'insurance_added',
+          occurredAt: new Date('2026-02-01'),
+          summary: 'Insurance policy JIU-VEH-88213 (Jubilee Insurance (U) Ltd)',
+          detail: { coverageAmount: 45_000_000, endDate: '2027-01-31' }, createdBy: mathias.id,
+        },
+      });
+    }
+  }
+
   console.log('Seeding starter projects for Morise Agro Ltd (Sprint 12)...');
   // Project 1 — active, in progress: a live demo target for team/task/
   // milestone management.

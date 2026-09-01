@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsIn,
@@ -9,6 +10,8 @@ import {
   IsPositive,
   IsString,
   IsUUID,
+  Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
@@ -24,8 +27,12 @@ export class CreateAssetDto {
   @IsUUID()
   departmentId?: string;
 
+  // Asset Management (2 September 2026): optional — auto-generated as
+  // AST-YYYY-NNNN when omitted.
+  @IsOptional()
   @IsString()
-  assetNumber: string;
+  @MaxLength(50)
+  assetNumber?: string;
 
   @IsString()
   name: string;
@@ -35,12 +42,29 @@ export class CreateAssetDto {
   category?: string;
 
   @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @IsOptional()
   @IsString()
   description?: string;
 
   @IsOptional()
   @IsUUID()
   custodianEmployeeId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  supplierId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  purchaseReference?: string;
+
+  @IsOptional()
+  @IsDateString()
+  warrantyExpiryDate?: string;
 
   @IsDateString()
   purchaseDate: string;
@@ -105,8 +129,37 @@ export class UpdateAssetDto {
   category?: string;
 
   @IsOptional()
+  @IsUUID()
+  categoryId?: string | null;
+
+  @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsUUID()
+  branchId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  departmentId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  custodianEmployeeId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  supplierId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  purchaseReference?: string;
+
+  @IsOptional()
+  @IsDateString()
+  warrantyExpiryDate?: string;
 
   @IsOptional()
   @IsString()
@@ -123,6 +176,178 @@ export class UpdateAssetDto {
   @IsOptional()
   @IsString()
   documentReference?: string;
+}
+
+// ---- Asset categories ----------------------------------------------
+const DEP_METHODS = ['none', 'straight_line'] as const;
+
+export class CreateAssetCategoryDto {
+  @IsUUID()
+  companyId: string;
+
+  @IsString()
+  @MaxLength(30)
+  code: string;
+
+  @IsString()
+  @MaxLength(120)
+  name: string;
+
+  @IsOptional()
+  @IsIn(DEP_METHODS)
+  defaultDepreciationMethod?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  defaultUsefulLifeYears?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  defaultSalvagePercent?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class UpdateAssetCategoryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  name?: string;
+
+  @IsOptional()
+  @IsIn(DEP_METHODS)
+  defaultDepreciationMethod?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  defaultUsefulLifeYears?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  defaultSalvagePercent?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+// ---- Asset inspection --------------------------------------------
+export class CreateAssetInspectionDto {
+  @IsDateString()
+  inspectionDate: string;
+
+  @IsOptional()
+  @IsUUID()
+  inspectorEmployeeId?: string;
+
+  @IsIn(['excellent', 'good', 'fair', 'poor', 'unserviceable'])
+  condition: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  findings?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  actionRequired?: string;
+
+  @IsOptional()
+  @IsDateString()
+  nextInspectionDate?: string;
+}
+
+// ---- Asset insurance policy ------------------------------------
+export class CreateAssetInsuranceDto {
+  @IsString()
+  @MaxLength(150)
+  insurer: string;
+
+  @IsString()
+  @MaxLength(100)
+  policyNumber: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsPositive()
+  coverageAmount: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  premium?: number;
+
+  @IsDateString()
+  startDate: string;
+
+  @IsDateString()
+  endDate: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class UpdateAssetInsuranceDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  insurer?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  policyNumber?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @IsPositive()
+  coverageAmount?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  premium?: number;
+
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsIn(['active', 'expired', 'cancelled'])
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }
 
 export class TransferAssetDto {

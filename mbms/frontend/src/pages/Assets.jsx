@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import { apiRequest, apiRequestWithMeta, ApiRequestError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { Money } from '../components/Money';
+import { AssetCategoriesModal, AssetDetailModal } from './AssetExtras';
 
 const STATUS_BADGE = {
   active: 'success',
@@ -31,6 +32,9 @@ export function AssetsPage() {
   const [assets, setAssets] = useState(null);
   const [error, setError] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
+  const [detailAsset, setDetailAsset] = useState(null);
+  const [companies, setCompanies] = useState([]);
   const [busyId, setBusyId] = useState(null);
   const [transferTarget, setTransferTarget] = useState(null);
   const [depreciationTarget, setDepreciationTarget] = useState(null);
@@ -52,6 +56,9 @@ export function AssetsPage() {
 
   useEffect(() => {
     load();
+    apiRequestWithMeta('/organization/companies', { pageSize: 100 })
+      .then(({ items }) => setCompanies(items))
+      .catch(() => setCompanies([]));
   }, []);
 
   return (
@@ -62,7 +69,10 @@ export function AssetsPage() {
           <h1>Assets</h1>
         </div>
         {canManage && (
-          <div className="actions">
+          <div className="actions" style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary" onClick={() => setShowCategories(true)}>
+              Categories
+            </button>
             <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
               + Register Asset
             </button>
@@ -93,8 +103,10 @@ export function AssetsPage() {
               {assets.map((a) => (
                 <tr key={a.id}>
                   <td className="mono">{a.assetNumber}</td>
-                  <td className="rowlink">{a.name}</td>
-                  <td>{a.category || '—'}</td>
+                  <td className="rowlink">
+                    <button className="linkbtn" onClick={() => setDetailAsset(a)}>{a.name}</button>
+                  </td>
+                  <td>{a.categoryName || a.category || '—'}</td>
                   <td className="num"><Money value={a.netBookValue} /></td>
                   <td>
                     <span className={`badge ${STATUS_BADGE[a.status] ?? 'neutral'}`}>
@@ -104,6 +116,9 @@ export function AssetsPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button className="btn-ghost" onClick={() => setDetailAsset(a)}>
+                        Detail
+                      </button>
                       <button className="btn-ghost" onClick={() => setMaintenanceTarget(a)}>
                         Maintenance
                       </button>
@@ -140,6 +155,15 @@ export function AssetsPage() {
       </div>
 
       {showCreate && <CreateAssetModal onClose={() => setShowCreate(false)} onCreated={load} />}
+      {showCategories && <AssetCategoriesModal companies={companies} onClose={() => setShowCategories(false)} />}
+      {detailAsset && (
+        <AssetDetailModal
+          asset={detailAsset}
+          canManage={canManage}
+          onClose={() => setDetailAsset(null)}
+          onChanged={load}
+        />
+      )}
       {transferTarget && (
         <TransferAssetModal asset={transferTarget} onClose={() => setTransferTarget(null)} onDone={load} />
       )}
@@ -168,6 +192,11 @@ function CreateAssetModal({ onClose, onCreated }) {
   const [assetNumber, setAssetNumber] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [supplierId, setSupplierId] = useState('');
+  const [purchaseReference, setPurchaseReference] = useState('');
+  const [warrantyExpiryDate, setWarrantyExpiryDate] = useState('');
   const [description, setDescription] = useState('');
   const [custodianEmployeeId, setCustodianEmployeeId] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
@@ -194,6 +223,11 @@ function CreateAssetModal({ onClose, onCreated }) {
     } catch {
       setAccounts([]);
     }
+    try {
+      setCategories(await apiRequest('/assets/categories', { query: { companyId } }));
+    } catch {
+      setCategories([]);
+    }
   }
 
   async function onSubmit(e) {
@@ -207,9 +241,13 @@ function CreateAssetModal({ onClose, onCreated }) {
           companyId,
           branchId: branchId || undefined,
           departmentId: departmentId || undefined,
-          assetNumber,
+          assetNumber: assetNumber || undefined,
           name,
           category: category || undefined,
+          categoryId: categoryId || undefined,
+          supplierId: supplierId || undefined,
+          purchaseReference: purchaseReference || undefined,
+          warrantyExpiryDate: warrantyExpiryDate || undefined,
           description: description || undefined,
           custodianEmployeeId: custodianEmployeeId || undefined,
           purchaseDate,
@@ -253,10 +291,8 @@ function CreateAssetModal({ onClose, onCreated }) {
           </div>
           <div className="formgrid" style={{ marginBottom: 12 }}>
             <div className="field">
-              <label>
-                Asset Number <span className="req">*</span>
-              </label>
-              <input className="input" value={assetNumber} onChange={(e) => setAssetNumber(e.target.value)} placeholder="e.g. AST-0004" required />
+              <label>Asset Number</label>
+              <input className="input" value={assetNumber} onChange={(e) => setAssetNumber(e.target.value)} placeholder="auto (AST-YYYY-NNNN)" />
             </div>
             <div className="field">
               <label>
@@ -266,7 +302,28 @@ function CreateAssetModal({ onClose, onCreated }) {
             </div>
             <div className="field">
               <label>Category</label>
+              <select className="select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                <option value="">— none / free-text below —</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>Category (free text, if no category above)</label>
               <input className="input" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Vehicle" />
+            </div>
+            <div className="field">
+              <label>Supplier ID</label>
+              <input className="input" value={supplierId} onChange={(e) => setSupplierId(e.target.value)} placeholder="uuid (optional)" />
+            </div>
+            <div className="field">
+              <label>Purchase reference (PO / invoice)</label>
+              <input className="input" value={purchaseReference} onChange={(e) => setPurchaseReference(e.target.value)} placeholder="optional" />
+            </div>
+            <div className="field">
+              <label>Warranty expiry</label>
+              <input className="input" type="date" value={warrantyExpiryDate} onChange={(e) => setWarrantyExpiryDate(e.target.value)} />
             </div>
             <div className="field">
               <label>Custodian Employee ID</label>

@@ -8,13 +8,18 @@ import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { AssetsService } from './assets.service';
 import {
   ApproveDisposalDto,
+  CreateAssetCategoryDto,
   CreateAssetDto,
+  CreateAssetInspectionDto,
+  CreateAssetInsuranceDto,
   CreateMaintenanceRecordDto,
   DisposeAssetDto,
   RecordDepreciationDto,
   RequestDisposalDto,
   TransferAssetDto,
+  UpdateAssetCategoryDto,
   UpdateAssetDto,
+  UpdateAssetInsuranceDto,
 } from './dto/asset.dto';
 
 // Base path /api/v1/assets — Sprint 11 (Phase 2: Asset Management).
@@ -40,9 +45,106 @@ export class AssetsController {
     return this.assetsService.create(user, dto);
   }
 
+  // ---- Asset categories (2 September 2026) ------------------------
+  @Get('categories')
+  listCategories(@CurrentUser() user: AuthenticatedUser, @Query('companyId') companyId?: string) {
+    return this.assetsService.listCategories(user, companyId || undefined);
+  }
+
+  @Post('categories')
+  @RequirePermission('asset.manage')
+  createCategory(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateAssetCategoryDto) {
+    return this.assetsService.createCategory(user, dto);
+  }
+
+  @Patch('categories/:categoryId')
+  @RequirePermission('asset.manage')
+  updateCategory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @Body() dto: UpdateAssetCategoryDto,
+  ) {
+    return this.assetsService.updateCategory(user, categoryId, dto);
+  }
+
+  // ---- Reports ---------------------------------------------------
+  @Get('reports/register')
+  reportRegister(@CurrentUser() user: AuthenticatedUser, @Query('companyId') companyId?: string) {
+    return this.assetsService.reportRegister(user, companyId || undefined);
+  }
+
+  @Get('reports/depreciation-schedule')
+  reportDepreciationSchedule(@CurrentUser() user: AuthenticatedUser, @Query('companyId') companyId?: string) {
+    return this.assetsService.reportDepreciationSchedule(user, companyId || undefined);
+  }
+
+  @Get('reports/insurance-expiring')
+  reportInsuranceExpiring(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('companyId') companyId?: string,
+    @Query('days') days?: string,
+  ) {
+    return this.assetsService.reportInsuranceExpiring(user, companyId || undefined, days ? Number(days) : undefined);
+  }
+
+  @Get('reports/inspections-due')
+  reportInspectionsDue(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('companyId') companyId?: string,
+    @Query('days') days?: string,
+  ) {
+    return this.assetsService.reportInspectionsDue(user, companyId || undefined, days ? Number(days) : undefined);
+  }
+
+  // ---- Insurance policy update by id --------------------------
+  @Patch('insurance/:policyId')
+  @RequirePermission('asset.manage')
+  updateInsurance(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('policyId', ParseUUIDPipe) policyId: string,
+    @Body() dto: UpdateAssetInsuranceDto,
+  ) {
+    return this.assetsService.updateInsurance(user, policyId, dto);
+  }
+
   @Get(':id')
   get(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.assetsService.get(user, id);
+  }
+
+  @Get(':id/history')
+  history(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.assetsService.history(user, id);
+  }
+
+  @Get(':id/inspections')
+  listInspections(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.assetsService.listInspections(user, id);
+  }
+
+  @Post(':id/inspections')
+  @RequirePermission('asset.manage')
+  addInspection(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateAssetInspectionDto,
+  ) {
+    return this.assetsService.addInspection(user, id, dto);
+  }
+
+  @Get(':id/insurance')
+  listInsurance(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.assetsService.listInsurance(user, id);
+  }
+
+  @Post(':id/insurance')
+  @RequirePermission('asset.manage')
+  addInsurance(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateAssetInsuranceDto,
+  ) {
+    return this.assetsService.addInsurance(user, id, dto);
   }
 
   @Patch(':id')

@@ -964,6 +964,8 @@ model Supplier {
 
   contacts    SupplierContact[]
   evaluations SupplierEvaluation[]
+  // Asset Management (2 September 2026): assets bought from this supplier.
+  assets      Asset[]
 
   @@index([companyId])
   @@map("suppliers")
@@ -2005,9 +2007,15 @@ model Asset {
   departmentId        String? @map("department_id")
   assetNumber         String  @map("asset_number") @db.VarChar(50)
   name                String  @db.VarChar(255)
-  category            String? @db.VarChar(100)
+  category            String? @db.VarChar(100) // legacy free-text label; categoryId is the first-class link
+  categoryId          String? @map("category_id")
   description         String?
   custodianEmployeeId String? @map("custodian_employee_id") // logical ref -> employees.id
+
+  // Asset Management (2 September 2026): purchase / supplier information.
+  supplierId        String?   @map("supplier_id")
+  purchaseReference String?   @map("purchase_reference") @db.VarChar(100) // PO / invoice number
+  warrantyExpiryDate DateTime? @map("warranty_expiry_date") @db.Date
 
   purchaseDate            DateTime           @map("purchase_date") @db.Date
   purchaseCost            Decimal            @map("purchase_cost") @db.Decimal(18, 2)
@@ -2047,11 +2055,133 @@ model Asset {
   depreciationExpenseAccount     Account?                 @relation("AssetDepreciationExpenseAccount", fields: [depreciationExpenseAccountId], references: [id])
   accumulatedDepreciationAccount Account?                 @relation("AssetAccumulatedDepreciationAccount", fields: [accumulatedDepreciationAccountId], references: [id])
   maintenanceRecords             AssetMaintenanceRecord[]
+  assetCategory                  AssetCategory?           @relation(fields: [categoryId], references: [id])
+  supplier                       Supplier?                @relation(fields: [supplierId], references: [id])
+  inspections                    AssetInspection[]
+  insurancePolicies              AssetInsurancePolicy[]
+  events                         AssetEvent[]
 
   @@unique([companyId, assetNumber])
   @@index([companyId])
   @@index([status])
   @@map("assets")
+}
+
+// Asset Management (2 September 2026): a first-class asset category with
+// depreciation defaults a newly-registered asset inherits (unless the
+// registration overrides them). Examples: Vehicles, Buildings, Computers,
+// Machinery, Furniture, Equipment, Land, Office Equipment.
+model AssetCategory {
+  id                        String             @id @default(uuid())
+  companyId                 String             @map("company_id")
+  code                      String             @db.VarChar(30)
+  name                      String             @db.VarChar(120)
+  defaultDepreciationMethod DepreciationMethod @default(none) @map("default_depreciation_method")
+  defaultUsefulLifeYears    Int?               @map("default_useful_life_years")
+  defaultSalvagePercent     Decimal?           @map("default_salvage_percent") @db.Decimal(5, 2) // % of purchase cost
+  note                      String?
+  isActive                  Boolean            @default(true) @map("is_active")
+  createdAt                 DateTime           @default(now()) @map("created_at")
+  updatedAt                 DateTime           @updatedAt @map("updated_at")
+
+  assets Asset[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@map("asset_categories")
+}
+
+enum AssetCondition {
+  excellent
+  good
+  fair
+  poor
+  unserviceable
+}
+
+// A periodic condition inspection, distinct from the one-off inspection
+// notes captured inside the disposal workflow.
+model AssetInspection {
+  id                  String         @id @default(uuid())
+  assetId             String         @map("asset_id")
+  inspectionDate      DateTime       @map("inspection_date") @db.Date
+  inspectorEmployeeId String?        @map("inspector_employee_id") // logical ref -> employees.id
+  condition           AssetCondition
+  findings            String?
+  actionRequired      String?        @map("action_required")
+  nextInspectionDate  DateTime?      @map("next_inspection_date") @db.Date
+  createdBy           String         @map("created_by")
+  createdAt           DateTime       @default(now()) @map("created_at")
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@map("asset_inspections")
+}
+
+enum InsurancePolicyStatus {
+  active
+  expired
+  cancelled
+}
+
+// A first-class insurance policy for an asset, with cover amount, premium
+// and a term. Supersedes the three inline insurer / policy-number /
+// expiry-date fields on Asset (kept for backward compatibility).
+model AssetInsurancePolicy {
+  id             String                @id @default(uuid())
+  assetId        String                @map("asset_id")
+  insurer        String                @db.VarChar(150)
+  policyNumber   String                @map("policy_number") @db.VarChar(100)
+  coverageAmount Decimal               @map("coverage_amount") @db.Decimal(18, 2)
+  premium        Decimal?              @db.Decimal(18, 2)
+  startDate      DateTime              @map("start_date") @db.Date
+  endDate        DateTime              @map("end_date") @db.Date
+  status         InsurancePolicyStatus @default(active)
+  note           String?
+  createdBy      String                @map("created_by")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@map("asset_insurance_policies")
+}
+
+enum AssetEventType {
+  registered
+  updated
+  transferred
+  depreciation
+  maintenance
+  inspection
+  insurance_added
+  insurance_updated
+  disposal_requested
+  disposal_approved
+  disposed
+}
+
+// A single append-only asset-history row. Every lifecycle action writes one,
+// so GET /assets/:id/history is a clean chronological timeline without
+// stitching six tables together at read time.
+model AssetEvent {
+  id         String         @id @default(uuid())
+  assetId    String         @map("asset_id")
+  companyId  String         @map("company_id")
+  eventType  AssetEventType  @map("event_type")
+  occurredAt DateTime       @default(now()) @map("occurred_at")
+  summary    String         @db.VarChar(255)
+  detail     Json?
+  createdBy  String         @map("created_by")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([companyId])
+  @@map("asset_events")
 }
 
 model AssetMaintenanceRecord {

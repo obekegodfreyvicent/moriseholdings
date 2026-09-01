@@ -5237,6 +5237,201 @@
         }
       }
     },
+    "/api/v1/assets/categories": {
+      "get": {
+        "operationId": "AssetsController_listCategories",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "AssetsController_createCategory",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/categories/{categoryId}": {
+      "patch": {
+        "operationId": "AssetsController_updateCategory",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAssetCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/reports/register": {
+      "get": {
+        "operationId": "AssetsController_reportRegister",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/reports/depreciation-schedule": {
+      "get": {
+        "operationId": "AssetsController_reportDepreciationSchedule",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/reports/insurance-expiring": {
+      "get": {
+        "operationId": "AssetsController_reportInsuranceExpiring",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/reports/inspections-due": {
+      "get": {
+        "operationId": "AssetsController_reportInspectionsDue",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/insurance/{policyId}": {
+      "patch": {
+        "operationId": "AssetsController_updateInsurance",
+        "parameters": [
+          {
+            "name": "policyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAssetInsuranceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/assets/{id}": {
       "get": {
         "operationId": "AssetsController_get",
@@ -5280,6 +5475,122 @@
         },
         "responses": {
           "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{id}/history": {
+      "get": {
+        "operationId": "AssetsController_history",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{id}/inspections": {
+      "get": {
+        "operationId": "AssetsController_listInspections",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "AssetsController_addInspection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetInspectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{id}/insurance": {
+      "get": {
+        "operationId": "AssetsController_listInsurance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "AssetsController_addInsurance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetInsuranceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
             "description": ""
           }
         }
@@ -12463,7 +12774,8 @@
             "type": "string"
           },
           "assetNumber": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 50
           },
           "name": {
             "type": "string"
@@ -12471,10 +12783,23 @@
           "category": {
             "type": "string"
           },
+          "categoryId": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
           "custodianEmployeeId": {
+            "type": "string"
+          },
+          "supplierId": {
+            "type": "string"
+          },
+          "purchaseReference": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "warrantyExpiryDate": {
             "type": "string"
           },
           "purchaseDate": {
@@ -12523,10 +12848,197 @@
         },
         "required": [
           "companyId",
-          "assetNumber",
           "name",
           "purchaseDate",
           "purchaseCost"
+        ]
+      },
+      "CreateAssetCategoryDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "defaultDepreciationMethod": {
+            "type": "string",
+            "enum": [
+              "none",
+              "straight_line"
+            ]
+          },
+          "defaultUsefulLifeYears": {
+            "type": "number",
+            "minimum": 1
+          },
+          "defaultSalvagePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "companyId",
+          "code",
+          "name"
+        ]
+      },
+      "UpdateAssetCategoryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "defaultDepreciationMethod": {
+            "type": "string",
+            "enum": [
+              "none",
+              "straight_line"
+            ]
+          },
+          "defaultUsefulLifeYears": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "defaultSalvagePercent": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateAssetInsuranceDto": {
+        "type": "object",
+        "properties": {
+          "insurer": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "policyNumber": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "coverageAmount": {
+            "type": "number",
+            "minimum": 1
+          },
+          "premium": {
+            "type": "number",
+            "minimum": 0
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "cancelled"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "CreateAssetInspectionDto": {
+        "type": "object",
+        "properties": {
+          "inspectionDate": {
+            "type": "string"
+          },
+          "inspectorEmployeeId": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "excellent",
+              "good",
+              "fair",
+              "poor",
+              "unserviceable"
+            ]
+          },
+          "findings": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "actionRequired": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "nextInspectionDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspectionDate",
+          "condition"
+        ]
+      },
+      "CreateAssetInsuranceDto": {
+        "type": "object",
+        "properties": {
+          "insurer": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "policyNumber": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "coverageAmount": {
+            "type": "number",
+            "minimum": 1
+          },
+          "premium": {
+            "type": "number",
+            "minimum": 0
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "insurer",
+          "policyNumber",
+          "coverageAmount",
+          "startDate",
+          "endDate"
         ]
       },
       "UpdateAssetDto": {
@@ -12538,7 +13050,34 @@
           "category": {
             "type": "string"
           },
+          "categoryId": {
+            "type": "string",
+            "nullable": true
+          },
           "description": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "nullable": true
+          },
+          "departmentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "custodianEmployeeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "supplierId": {
+            "type": "string",
+            "nullable": true
+          },
+          "purchaseReference": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "warrantyExpiryDate": {
             "type": "string"
           },
           "insurer": {
