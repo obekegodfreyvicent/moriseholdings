@@ -3211,6 +3211,59 @@ async function main() {
     }
   }
 
+  // Salary structures (1 September 2026): demo Morise Agro Ltd employees get a
+  // salary structure (basic + allowances) plus a one-off item for the current
+  // month, so a payroll run shows an earnings breakdown per payslip. Each
+  // structure sums to the employee's existing grossSalary; the one-off item is
+  // extra for that month only.
+  {
+    const nowY = new Date().getUTCFullYear();
+    const nowM = new Date().getUTCMonth() + 1;
+    type Comp = { type: 'basic' | 'allowance' | 'overtime' | 'bonus'; label: string; amount: number };
+    const structures: Array<{ employeeId: string; recurring: Comp[]; oneOff: Comp }> = [];
+    if (grace)
+      structures.push({
+        employeeId: grace.id,
+        recurring: [
+          { type: 'basic', label: 'Basic salary', amount: 1_000_000 },
+          { type: 'allowance', label: 'Housing allowance', amount: 350_000 },
+          { type: 'allowance', label: 'Transport allowance', amount: 250_000 },
+        ],
+        oneOff: { type: 'overtime', label: `Overtime — ${nowM}/${nowY}`, amount: 180_000 },
+      });
+    structures.push({
+      employeeId: kintuEmployee.id,
+      recurring: [
+        { type: 'basic', label: 'Basic salary', amount: 1_800_000 },
+        { type: 'allowance', label: 'Housing allowance', amount: 600_000 },
+        { type: 'allowance', label: 'Transport allowance', amount: 400_000 },
+      ],
+      oneOff: { type: 'bonus', label: `Performance bonus — ${nowM}/${nowY}`, amount: 500_000 },
+    });
+    for (const s of structures) {
+      const has = await prisma.salaryComponent.findFirst({ where: { employeeId: s.employeeId } });
+      if (has) continue;
+      for (const c of s.recurring) {
+        await prisma.salaryComponent.create({
+          data: { companyId: agro.id, employeeId: s.employeeId, type: c.type, label: c.label, amount: c.amount, recurring: true, createdBy: nakato.id },
+        });
+      }
+      await prisma.salaryComponent.create({
+        data: {
+          companyId: agro.id,
+          employeeId: s.employeeId,
+          type: s.oneOff.type,
+          label: s.oneOff.label,
+          amount: s.oneOff.amount,
+          recurring: false,
+          periodYear: nowY,
+          periodMonth: nowM,
+          createdBy: nakato.id,
+        },
+      });
+    }
+  }
+
   // My HR self-service (28 August 2026): every seeded staff login is given a
   // linked Employee record so the self-service screens work for whichever
   // demo persona is signed in — not only Peter Kintu. Each also gets a 2026

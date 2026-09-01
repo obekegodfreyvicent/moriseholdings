@@ -1,11 +1,17 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../common/strategies/jwt.strategy';
 import { PayrollService } from './payroll.service';
-import { CreatePayrollRunDto, RejectDto, RequestSalaryAdvanceDto } from './dto/payroll.dto';
+import {
+  CreatePayrollRunDto,
+  CreateSalaryComponentDto,
+  RejectDto,
+  RequestSalaryAdvanceDto,
+  UpdateSalaryComponentDto,
+} from './dto/payroll.dto';
 
 // Base path /api/v1/payroll — the Admin "Payroll" section (28 August 2026).
 // Read: payroll.viewAll / manage / approve. Create a run or request an
@@ -79,5 +85,56 @@ export class PayrollController {
     @Body() dto: RejectDto,
   ) {
     return this.payrollService.rejectAdvance(user, id, dto);
+  }
+
+  // ---- salary structures: basic / allowances / overtime / bonuses -------
+
+  @Get('salary-components')
+  listComponents(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('companyId') companyId?: string,
+    @Query('employeeId') employeeId?: string,
+  ) {
+    return this.payrollService.listComponents(user, {
+      companyId: companyId || undefined,
+      employeeId: employeeId || undefined,
+    });
+  }
+
+  @Get('salary-structure/:employeeId')
+  salaryStructure(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+  ) {
+    return this.payrollService.salaryStructure(
+      user,
+      employeeId,
+      year ? Number(year) : undefined,
+      month ? Number(month) : undefined,
+    );
+  }
+
+  @Post('salary-components')
+  @RequirePermission('payroll.manage')
+  createComponent(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateSalaryComponentDto) {
+    return this.payrollService.createComponent(user, dto);
+  }
+
+  @Patch('salary-components/:id')
+  @RequirePermission('payroll.manage')
+  updateComponent(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateSalaryComponentDto,
+  ) {
+    return this.payrollService.updateComponent(user, id, dto);
+  }
+
+  @Delete('salary-components/:id')
+  @RequirePermission('payroll.manage')
+  deleteComponent(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.payrollService.deleteComponent(user, id);
   }
 }

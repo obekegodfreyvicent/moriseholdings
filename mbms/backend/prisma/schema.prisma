@@ -575,11 +575,64 @@ model Payslip {
   netPay          Decimal  @map("net_pay") @db.Decimal(18, 2)
   createdAt       DateTime @default(now()) @map("created_at")
 
-  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  payrollRun PayrollRun         @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  components PayslipComponent[]
 
   @@unique([payrollRunId, employeeId])
   @@index([employeeId])
   @@map("payslips")
+}
+
+// Salary structures, allowances, overtime and bonuses (1 September 2026).
+// A SalaryComponent is one line of an employee's monthly earnings structure:
+// a `basic` salary, one or more `allowance` lines, and optional `overtime` /
+// `bonus` lines. Recurring components apply to every run; a non-recurring
+// component (`recurring = false`, with periodYear/periodMonth set) applies to
+// exactly one month's run. A payroll run derives an employee's gross from the
+// sum of their applicable components, falling back to Employee.grossSalary
+// when an employee has no components (backward compatible).
+enum SalaryComponentType {
+  basic
+  allowance
+  overtime
+  bonus
+}
+
+model SalaryComponent {
+  id          String              @id @default(uuid())
+  companyId   String              @map("company_id")
+  employeeId  String              @map("employee_id")
+  type        SalaryComponentType
+  label       String              @db.VarChar(120)
+  amount      Decimal             @db.Decimal(18, 2)
+  recurring   Boolean             @default(true) // true = every run; false = one specific month
+  periodYear  Int?                @map("period_year") // set only when recurring = false
+  periodMonth Int?                @map("period_month")
+  active      Boolean             @default(true)
+  note        String?
+  createdBy   String              @map("created_by")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@map("salary_components")
+}
+
+// The earnings breakdown captured on a payslip when a run is computed: one
+// row per SalaryComponent that made up that payslip's gross (or a single
+// synthetic `basic` row for an employee paid from Employee.grossSalary).
+model PayslipComponent {
+  id        String              @id @default(uuid())
+  payslipId String              @map("payslip_id")
+  type      SalaryComponentType
+  label     String              @db.VarChar(120)
+  amount    Decimal             @db.Decimal(18, 2)
+
+  payslip Payslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+
+  @@index([payslipId])
+  @@map("payslip_components")
 }
 
 enum SalaryAdvanceStatus {

@@ -6,7 +6,13 @@ import { hasGroupVisibility, isCompanyInScope } from '../common/scope.util';
 import { AuditService } from '../common/audit/audit.service';
 import { NotificationsService } from '../common/notifications/notifications.service';
 import { computePay } from './uganda-statutory.util';
-import { CreatePayrollRunDto, RejectDto, RequestSalaryAdvanceDto } from './dto/payroll.dto';
+import {
+  CreatePayrollRunDto,
+  CreateSalaryComponentDto,
+  RejectDto,
+  RequestSalaryAdvanceDto,
+  UpdateSalaryComponentDto,
+} from './dto/payroll.dto';
 
 const GROUP_PERM = 'payroll.viewAll';
 const MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -42,8 +48,28 @@ function runResource(r: any) {
           advanceRecovery: p.advanceRecovery.toString(),
           otherDeductions: p.otherDeductions.toString(),
           netPay: p.netPay.toString(),
+          components: Array.isArray(p.components)
+            ? p.components.map((c: any) => ({ type: c.type, label: c.label, amount: c.amount.toString() }))
+            : undefined,
         }))
       : undefined,
+  };
+}
+
+function componentResource(c: any) {
+  return {
+    id: c.id,
+    companyId: c.companyId,
+    employeeId: c.employeeId,
+    type: c.type,
+    label: c.label,
+    amount: c.amount.toString(),
+    recurring: c.recurring,
+    periodYear: c.periodYear,
+    periodMonth: c.periodMonth,
+    active: c.active,
+    note: c.note,
+    createdAt: c.createdAt,
   };
 }
 
@@ -90,9 +116,33 @@ export class PayrollService {
   }
 
   async getRun(user: AuthenticatedUser, id: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id }, include: { payslips: { orderBy: { employeeName: 'asc' } } } });
+    const run = await this.prisma.payrollRun.findUnique({
+      where: { id },
+      include: { payslips: { orderBy: { employeeName: 'asc' }, include: { components: true } } },
+    });
     if (!run || !isCompanyInScope(user, run.companyId, GROUP_PERM)) throw new NotFoundAppException('Payroll run not found.');
     return runResource(run);
+  }
+
+  // Salary-structure components that apply to (companyId) for one month:
+  // every active recurring component, plus active one-off components tagged
+  // for exactly that period. Returned grouped by employee.
+  private async componentsForPeriod(companyId: string, periodYear: number, periodMonth: number) {
+    const rows = await this.prisma.salaryComponent.findMany({
+      where: {
+        companyId,
+        active: true,
+        OR: [{ recurring: true }, { recurring: false, periodYear, periodMonth }],
+      },
+      orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
+    });
+    const byEmployee = new Map<string, typeof rows>();
+    for (const c of rows) {
+      const list = byEmployee.get(c.employeeId) ?? [];
+      list.push(c);
+      byEmployee.set(c.employeeId, list);
+    }
+    return byEmployee;
   }
 
   async createRun(user: AuthenticatedUser, dto: CreatePayrollRunDto) {
@@ -105,12 +155,21 @@ export class PayrollService {
       throw new ConflictAppException(`A payroll run for ${MONTHS[dto.periodMonth]} ${dto.periodYear} already exists (${existing.status}).`);
     }
 
-    const employees = await this.prisma.employee.findMany({
-      where: { companyId: dto.companyId, status: 'active', grossSalary: { not: null } },
+    // Salary structures (1 September 2026): an employee's gross for the run is
+    // the sum of their applicable salary components (basic + allowances +
+    // this month's overtime / bonuses). An employee with no components falls
+    // back to Employee.grossSalary, so existing data keeps working unchanged.
+    const componentsByEmployee = await this.componentsForPeriod(dto.companyId, dto.periodYear, dto.periodMonth);
+
+    const allEmployees = await this.prisma.employee.findMany({
+      where: { companyId: dto.companyId, status: 'active' },
       select: { id: true, firstName: true, lastName: true, grossSalary: true },
     });
+    const employees = allEmployees.filter((e) => componentsByEmployee.has(e.id) || e.grossSalary != null);
     if (employees.length === 0) {
-      throw new ConflictAppException('No active employees in this company have a gross salary set — nothing to run.');
+      throw new ConflictAppException(
+        'No active employees in this company have a salary structure or a gross salary set — nothing to run.',
+      );
     }
 
     // Active salary advances, oldest first, so a run can plan an instalment.
@@ -128,7 +187,12 @@ export class PayrollService {
     const payslipData: any[] = [];
     const totals = { gross: 0, paye: 0, nssfEmp: 0, nssfEmployer: 0, advances: 0, net: 0 };
     for (const e of employees) {
-      const gross = Number(e.grossSalary);
+      const empComponents = componentsByEmployee.get(e.id) ?? [];
+      const breakdown =
+        empComponents.length > 0
+          ? empComponents.map((c) => ({ type: c.type, label: c.label, amount: Number(c.amount) }))
+          : [{ type: 'basic' as const, label: 'Basic salary', amount: Number(e.grossSalary) }];
+      const gross = breakdown.reduce((s, c) => s + c.amount, 0);
       // Plan this month's advance recovery: one instalment per active advance,
       // never more than what is still outstanding.
       let plannedRecovery = 0;
@@ -153,6 +217,7 @@ export class PayrollService {
         advanceRecovery: pay.advanceRecovery,
         otherDeductions: 0,
         netPay: pay.net,
+        components: { create: breakdown.map((c) => ({ type: c.type, label: c.label, amount: c.amount })) },
       });
       totals.gross += pay.gross;
       totals.paye += pay.paye;
@@ -178,7 +243,7 @@ export class PayrollService {
         createdBy: user.id,
         payslips: { create: payslipData },
       },
-      include: { payslips: { orderBy: { employeeName: 'asc' } } },
+      include: { payslips: { orderBy: { employeeName: 'asc' }, include: { components: true } } },
     });
     await this.audit(user, 'payroll.run.created', dto.companyId, run.id, null, {
       period: runResource(run).periodLabel,
@@ -195,7 +260,7 @@ export class PayrollService {
     const updated = await this.prisma.payrollRun.update({
       where: { id },
       data: { status: 'approved', approvedBy: user.id, approvedAt: new Date() },
-      include: { payslips: { orderBy: { employeeName: 'asc' } } },
+      include: { payslips: { orderBy: { employeeName: 'asc' }, include: { components: true } } },
     });
     await this.audit(user, 'payroll.run.approved', run.companyId, id, { status: 'draft' }, { status: 'approved' });
     return runResource(updated);
@@ -284,7 +349,7 @@ export class PayrollService {
       return tx.payrollRun.update({
         where: { id },
         data: { status: 'paid', paidAt, journalEntryId: entry.id },
-        include: { payslips: { orderBy: { employeeName: 'asc' } } },
+        include: { payslips: { orderBy: { employeeName: 'asc' }, include: { components: true } } },
       });
     });
 
@@ -372,6 +437,121 @@ export class PayrollService {
     });
     await this.audit(user, 'payroll.salary_advance.rejected', a.companyId, id, { status: 'requested' }, { status: 'rejected' });
     return advanceResource(updated);
+  }
+
+  // --------------------- salary structures / components ------------------
+
+  async listComponents(user: AuthenticatedUser, filters: { companyId?: string; employeeId?: string }) {
+    const where: any = { ...this.companyFilter(user, filters.companyId) };
+    if (filters.employeeId) where.employeeId = filters.employeeId;
+    const rows = await this.prisma.salaryComponent.findMany({
+      where,
+      orderBy: [{ employeeId: 'asc' }, { type: 'asc' }, { createdAt: 'asc' }],
+    });
+    return rows.map(componentResource);
+  }
+
+  async createComponent(user: AuthenticatedUser, dto: CreateSalaryComponentDto) {
+    if (!isCompanyInScope(user, dto.companyId, GROUP_PERM)) throw new NotFoundAppException('Company not found.');
+    const employee = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
+    if (!employee || employee.companyId !== dto.companyId) throw new NotFoundAppException('Employee not found in this company.');
+    if (Number(dto.amount) < 0) throw new ConflictAppException('A component amount cannot be negative.');
+
+    const recurring = dto.recurring ?? true;
+    if (!recurring && (dto.periodYear == null || dto.periodMonth == null)) {
+      throw new ConflictAppException('A one-off component needs a period year and month.');
+    }
+    // One active recurring `basic` per employee: supersede any earlier one.
+    if (dto.type === 'basic' && recurring) {
+      await this.prisma.salaryComponent.updateMany({
+        where: { employeeId: dto.employeeId, type: 'basic', recurring: true, active: true },
+        data: { active: false },
+      });
+    }
+
+    const created = await this.prisma.salaryComponent.create({
+      data: {
+        companyId: dto.companyId,
+        employeeId: dto.employeeId,
+        type: dto.type,
+        label: dto.label,
+        amount: dto.amount,
+        recurring,
+        periodYear: recurring ? null : (dto.periodYear as number),
+        periodMonth: recurring ? null : (dto.periodMonth as number),
+        note: dto.note ?? null,
+        createdBy: user.id,
+      },
+    });
+    await this.audit(user, 'payroll.salary_component.created', dto.companyId, created.id, null, componentResource(created));
+    return componentResource(created);
+  }
+
+  async updateComponent(user: AuthenticatedUser, id: string, dto: UpdateSalaryComponentDto) {
+    const c = await this.prisma.salaryComponent.findUnique({ where: { id } });
+    if (!c || !isCompanyInScope(user, c.companyId, GROUP_PERM)) throw new NotFoundAppException('Salary component not found.');
+    if (dto.amount != null && Number(dto.amount) < 0) throw new ConflictAppException('A component amount cannot be negative.');
+    const updated = await this.prisma.salaryComponent.update({
+      where: { id },
+      data: {
+        label: dto.label ?? c.label,
+        amount: dto.amount ?? c.amount,
+        active: dto.active ?? c.active,
+        note: dto.note ?? c.note,
+      },
+    });
+    await this.audit(user, 'payroll.salary_component.updated', c.companyId, id, componentResource(c), componentResource(updated));
+    return componentResource(updated);
+  }
+
+  async deleteComponent(user: AuthenticatedUser, id: string) {
+    const c = await this.prisma.salaryComponent.findUnique({ where: { id } });
+    if (!c || !isCompanyInScope(user, c.companyId, GROUP_PERM)) throw new NotFoundAppException('Salary component not found.');
+    await this.prisma.salaryComponent.delete({ where: { id } });
+    await this.audit(user, 'payroll.salary_component.deleted', c.companyId, id, componentResource(c), null);
+    return { deleted: true };
+  }
+
+  // The assembled salary structure for one employee for a given month, with a
+  // gross total and a PAYE / NSSF / net preview (no advance recovery).
+  async salaryStructure(user: AuthenticatedUser, employeeId: string, year?: number, month?: number) {
+    const employee = await this.prisma.employee.findUnique({ where: { id: employeeId } });
+    if (!employee || !isCompanyInScope(user, employee.companyId, GROUP_PERM)) {
+      throw new NotFoundAppException('Employee not found.');
+    }
+    const now = new Date();
+    const y = year ?? now.getUTCFullYear();
+    const m = month ?? now.getUTCMonth() + 1;
+    const map = await this.componentsForPeriod(employee.companyId, y, m);
+    const components = map.get(employeeId) ?? [];
+    const breakdown =
+      components.length > 0
+        ? components.map(componentResource)
+        : employee.grossSalary != null
+          ? [
+              {
+                id: null,
+                type: 'basic',
+                label: 'Basic salary (Employee.grossSalary — no structure defined)',
+                amount: Number(employee.grossSalary).toFixed(2),
+                recurring: true,
+              } as any,
+            ]
+          : [];
+    const gross = breakdown.reduce((s, c) => s + Number(c.amount), 0);
+    const pay = computePay(gross);
+    return {
+      employeeId,
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      companyId: employee.companyId,
+      period: { year: y, month: m, label: `${MONTHS[m]} ${y}` },
+      components: breakdown,
+      grossSalary: gross.toFixed(2),
+      paye: pay.paye.toFixed(2),
+      nssfEmployee: pay.nssfEmployee.toFixed(2),
+      nssfEmployer: pay.nssfEmployer.toFixed(2),
+      netPayPreview: pay.net.toFixed(2),
+    };
   }
 
   // ------------------------------- helpers -------------------------------

@@ -190,7 +190,10 @@ export class MyHrService {
     const e = await this.needMe(user);
     const rows = await this.prisma.payslip.findMany({
       where: { employeeId: e.id, payrollRun: { status: 'paid' } },
-      include: { payrollRun: { select: { periodYear: true, periodMonth: true, paidAt: true } } },
+      include: {
+        payrollRun: { select: { periodYear: true, periodMonth: true, paidAt: true } },
+        components: true,
+      },
       orderBy: [{ payrollRun: { periodYear: 'desc' } }, { payrollRun: { periodMonth: 'desc' } }],
     });
     return rows.map((p) => ({
@@ -204,6 +207,7 @@ export class MyHrService {
       advanceRecovery: p.advanceRecovery.toString(),
       otherDeductions: p.otherDeductions.toString(),
       netPay: p.netPay.toString(),
+      earnings: (p as any).components.map((c: any) => ({ type: c.type, label: c.label, amount: c.amount.toString() })),
     }));
   }
 
