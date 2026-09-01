@@ -532,7 +532,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   // gets asset.manage — physical custody of equipment/fixtures in a
   // warehouse is the closest thing this codebase actually models to a
   // warehouse operation.
-  'Warehouse Manager': ['product.viewAll', 'asset.manage', 'expense.create', 'leave.approve'],
+  // Warehouse Management (1 September 2026): the Inventory / Warehouse ops
+  // screens gate writes on product.manage (no dedicated inventory.* code),
+  // so the Warehouse Manager now holds it — receiving, picking, packing,
+  // dispatch, transfers, stock counts and reconciliation are their job.
+  'Warehouse Manager': ['product.viewAll', 'product.manage', 'asset.manage', 'expense.create', 'leave.approve'],
   // Compliance/contracts oversight: supplier contract references
   // (FR-SUPP-02), employee contract terms, corporate structure and audit
   // trail visibility — no create/manage permission anywhere, matching an
@@ -2258,6 +2262,167 @@ async function main() {
             });
           }
         }
+      }
+    }
+  }
+
+  // ============ Warehouse Management (1 September 2026) ============
+  // A Warehouse Manager persona, warehouse staff, functional bins, and a
+  // draft goods receipt / pick list / stock count so the Warehouse ops
+  // screens are demoable on a fresh database.
+  console.log('Seeding Warehouse Management: manager persona, staff, bins, a goods receipt / pick list / stock count (1 September 2026)...');
+
+  const opio = await prisma.user.upsert({
+    where: { email: 'w.opio@morise-holdings.com' },
+    update: {},
+    create: { email: 'w.opio@morise-holdings.com', passwordHash, firstName: 'William', lastName: 'Opio' },
+  });
+  const whMgrRoleId = rolesByName.get('Warehouse Manager');
+  if (whMgrRoleId) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: opio.id, roleId: whMgrRoleId } },
+      update: {},
+      create: { userId: opio.id, roleId: whMgrRoleId },
+    });
+  }
+  await ensureScope(opio.id, agro.id, null);
+  const opioEmployee = await prisma.employee.upsert({
+    where: { companyId_employeeNumber: { companyId: agro.id, employeeNumber: 'EMP-0014' } },
+    update: { userId: opio.id },
+    create: {
+      companyId: agro.id,
+      branchId: 'b1000000-0000-4000-8000-000000000001',
+      employeeNumber: 'EMP-0014',
+      firstName: 'William',
+      lastName: 'Opio',
+      jobTitle: 'Warehouse Manager',
+      employmentStartDate: new Date('2023-06-01'),
+      userId: opio.id,
+    },
+  });
+
+  const agroMainWh = await prisma.warehouse.findFirst({ where: { companyId: agro.id, code: 'MAIN' } });
+  const davidEmp = await prisma.employee.findFirst({ where: { companyId: agro.id, employeeNumber: 'EMP-0002' } });
+  const graceEmp = await prisma.employee.findFirst({ where: { companyId: agro.id, employeeNumber: 'EMP-0001' } });
+  if (agroMainWh) {
+    // Functional bins.
+    for (const [code, name, kind, description] of [
+      ['A1', 'Aisle A – Rack 1', 'storage', 'Bagged inputs, ground level'],
+      ['COLD-1', 'Cold Room 1', 'quarantine', 'Temperature-controlled — seed and chemicals'],
+      ['RECV-1', 'Receiving Dock 1', 'receiving', 'Inbound goods, awaiting put-away'],
+      ['PACK-1', 'Pack Bench 1', 'packing', 'Order packing station'],
+      ['DISP-1', 'Dispatch Lane 1', 'dispatch', 'Staged for courier collection'],
+    ] as const) {
+      const loc = await prisma.stockLocation.findFirst({ where: { warehouseId: agroMainWh.id, code } });
+      if (loc) {
+        await prisma.stockLocation.update({ where: { id: loc.id }, data: { kind: kind as any, name, description } });
+      } else {
+        await prisma.stockLocation.create({
+          data: { warehouseId: agroMainWh.id, code, name, kind: kind as any, description },
+        });
+      }
+    }
+
+    // Warehouse staff.
+    const staffRows: [string | undefined, 'manager' | 'supervisor' | 'receiver' | 'picker' | 'packer' | 'dispatcher'][] = [
+      [opioEmployee.id, 'manager'],
+      [davidEmp?.id, 'picker'],
+      [davidEmp?.id, 'packer'],
+      [graceEmp?.id, 'receiver'],
+    ];
+    for (const [employeeId, role] of staffRows) {
+      if (!employeeId) continue;
+      const exists = await prisma.warehouseStaff.findFirst({
+        where: { warehouseId: agroMainWh.id, employeeId, role },
+      });
+      if (!exists) {
+        await prisma.warehouseStaff.create({ data: { warehouseId: agroMainWh.id, employeeId, role } });
+      }
+    }
+
+    // A draft goods receipt against AgroChem Uganda Ltd.
+    const agroChemSupplier = await prisma.supplier.findFirst({
+      where: { companyId: agro.id, name: 'AgroChem Uganda Ltd' },
+    });
+    if ((await prisma.goodsReceipt.count({ where: { companyId: agro.id } })) === 0) {
+      const p1002 = await prisma.product.findFirst({ where: { companyId: agro.id, productCode: 'PRD-1002' } });
+      const p1007 = await prisma.product.findFirst({ where: { companyId: agro.id, productCode: 'PRD-1007' } });
+      if (p1002 && p1007) {
+        await prisma.goodsReceipt.create({
+          data: {
+            companyId: agro.id,
+            warehouseId: agroMainWh.id,
+            receiptNumber: 'GRN-2026-0001',
+            supplierId: agroChemSupplier?.id ?? null,
+            reference: 'PO-2026-0007',
+            note: 'Inbound delivery — awaiting inspection & put-away.',
+            createdBy: opio.id,
+            lines: {
+              create: [
+                { productId: p1002.id, quantity: 40 },
+                { productId: p1007.id, quantity: 60, batchNumber: 'BS-2026-11', expiryDate: new Date('2027-05-31') },
+              ],
+            },
+          },
+        });
+      }
+    }
+
+    // A pending pick list for the confirmed storefront order (ORD-2026-0006).
+    if ((await prisma.pickList.count({ where: { companyId: agro.id } })) === 0) {
+      const confirmedOrder = await prisma.order.findFirst({
+        where: { companyId: agro.id, status: 'confirmed' },
+        include: { items: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (confirmedOrder && confirmedOrder.items.length) {
+        await prisma.pickList.create({
+          data: {
+            companyId: agro.id,
+            warehouseId: agroMainWh.id,
+            pickNumber: 'PICK-2026-0001',
+            orderId: confirmedOrder.id,
+            assignedToEmployeeId: davidEmp?.id ?? null,
+            reference: confirmedOrder.orderNumber,
+            note: 'Storefront order — pick, pack, dispatch to courier.',
+            status: 'pending',
+            createdBy: opio.id,
+            lines: {
+              create: confirmedOrder.items.map((it) => ({
+                productId: it.productId,
+                quantityRequested: it.quantity,
+              })),
+            },
+          },
+        });
+      }
+    }
+
+    // An open stock count over two products in MAIN.
+    if ((await prisma.stockCount.count({ where: { companyId: agro.id } })) === 0) {
+      const countProducts = await prisma.product.findMany({
+        where: { companyId: agro.id, productCode: { in: ['PRD-1001', 'PRD-1006'] } },
+      });
+      if (countProducts.length) {
+        const lines: { productId: string; systemQuantity: number }[] = [];
+        for (const p of countProducts) {
+          const bal = await prisma.stockBalance.findUnique({
+            where: { productId_warehouseId: { productId: p.id, warehouseId: agroMainWh.id } },
+          });
+          lines.push({ productId: p.id, systemQuantity: bal?.quantity ?? 0 });
+        }
+        await prisma.stockCount.create({
+          data: {
+            companyId: agro.id,
+            warehouseId: agroMainWh.id,
+            countNumber: 'CNT-2026-0001',
+            reference: 'Cycle count — Aisle A',
+            note: 'Monthly cycle count.',
+            status: 'open',
+            createdBy: opio.id,
+            lines: { create: lines },
+          },
+        });
       }
     }
   }

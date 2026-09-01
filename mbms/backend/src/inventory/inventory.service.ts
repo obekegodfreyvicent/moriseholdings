@@ -91,7 +91,7 @@ export class InventoryService {
 
   // A company always has exactly one default ("MAIN") warehouse. Created
   // lazily so an un-seeded company still works the first time stock moves.
-  private async ensureDefaultWarehouse(companyId: string) {
+  async ensureDefaultWarehouse(companyId: string) {
     const existing = await this.prisma.warehouse.findFirst({
       where: { companyId, isDefault: true },
     });
@@ -110,7 +110,7 @@ export class InventoryService {
 
   // Lazy one-time split: a product carrying a company roll-up but no
   // per-warehouse rows gets that quantity parked in the default warehouse.
-  private async ensureBalanceInitialised(product: any, defaultWarehouseId: string) {
+  async ensureBalanceInitialised(product: any, defaultWarehouseId: string) {
     const count = await this.prisma.stockBalance.count({ where: { productId: product.id } });
     if (count > 0) return;
     const qty = product.stockQuantity ?? 0;
@@ -124,11 +124,72 @@ export class InventoryService {
     });
   }
 
-  private async balanceQty(productId: string, warehouseId: string) {
+  async balanceQty(productId: string, warehouseId: string) {
     const row = await this.prisma.stockBalance.findUnique({
       where: { productId_warehouseId: { productId, warehouseId } },
     });
     return row?.quantity ?? 0;
+  }
+
+  // Apply one signed stock change to a product in a warehouse inside an
+  // existing transaction: writes the StockBalance, the Product roll-up and a
+  // StockMovement, and returns the new warehouse balance. Shared by the
+  // Warehouse Management flows (goods receipt, pick, stock-count reconcile).
+  // `setAbsolute`, when given, sets the warehouse balance to that figure and
+  // ignores `delta` (used by count reconciliation).
+  async applyDeltaTx(
+    tx: any,
+    opts: {
+      product: { id: string; companyId: string; stockQuantity: number | null };
+      warehouseId: string;
+      movementType: 'receipt' | 'issue' | 'return' | 'count' | 'adjustment';
+      delta?: number;
+      setAbsolute?: number;
+      reason?: string | null;
+      reference?: string | null;
+      batchNumber?: string | null;
+      createdBy: string;
+    },
+  ): Promise<number> {
+    const cur = await tx.stockBalance.findUnique({
+      where: { productId_warehouseId: { productId: opts.product.id, warehouseId: opts.warehouseId } },
+    });
+    const before = cur?.quantity ?? 0;
+    const balanceAfter =
+      opts.setAbsolute !== undefined ? opts.setAbsolute : before + (opts.delta ?? 0);
+    const applied = balanceAfter - before;
+    if (applied === 0) return before;
+
+    await tx.stockBalance.upsert({
+      where: { productId_warehouseId: { productId: opts.product.id, warehouseId: opts.warehouseId } },
+      create: {
+        companyId: opts.product.companyId,
+        productId: opts.product.id,
+        warehouseId: opts.warehouseId,
+        quantity: balanceAfter,
+      },
+      update: { quantity: balanceAfter },
+    });
+    await tx.product.update({
+      where: { id: opts.product.id },
+      data: { stockQuantity: (opts.product.stockQuantity ?? 0) + applied },
+    });
+    opts.product.stockQuantity = (opts.product.stockQuantity ?? 0) + applied;
+    await tx.stockMovement.create({
+      data: {
+        companyId: opts.product.companyId,
+        productId: opts.product.id,
+        movementType: opts.movementType,
+        quantity: applied,
+        balanceAfter,
+        warehouseId: opts.warehouseId,
+        batchNumber: opts.batchNumber ?? null,
+        reason: opts.reason ?? null,
+        reference: opts.reference ?? null,
+        createdBy: opts.createdBy,
+      },
+    });
+    return balanceAfter;
   }
 
   // GET /inventory/stock

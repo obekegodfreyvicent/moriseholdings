@@ -156,6 +156,16 @@ export class UpdateWarehouseDto {
   isActive?: boolean;
 }
 
+export const STOCK_LOCATION_KINDS = [
+  'receiving',
+  'storage',
+  'picking',
+  'packing',
+  'dispatch',
+  'quarantine',
+] as const;
+export type StockLocationKindDto = (typeof STOCK_LOCATION_KINDS)[number];
+
 export class CreateStockLocationDto {
   @IsString()
   @MaxLength(30)
@@ -164,6 +174,10 @@ export class CreateStockLocationDto {
   @IsString()
   @MaxLength(150)
   name: string;
+
+  @IsOptional()
+  @IsIn(STOCK_LOCATION_KINDS)
+  kind?: StockLocationKindDto;
 
   @IsOptional()
   @IsString()
@@ -176,6 +190,10 @@ export class UpdateStockLocationDto {
   @IsString()
   @MaxLength(150)
   name?: string;
+
+  @IsOptional()
+  @IsIn(STOCK_LOCATION_KINDS)
+  kind?: StockLocationKindDto;
 
   @IsOptional()
   @IsString()

@@ -1134,6 +1134,9 @@ model Product {
   stockBalances  StockBalance[]
   stockBatches   StockBatch[]
   stockSerials   StockSerial[]
+  goodsReceiptLines GoodsReceiptLine[]
+  pickListLines     PickListLine[]
+  stockCountLines   StockCountLine[]
 
   @@unique([companyId, productCode])
   @@index([companyId])
@@ -1173,9 +1176,13 @@ model Warehouse {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  branch    Branch?         @relation(fields: [branchId], references: [id])
-  locations StockLocation[]
-  balances  StockBalance[]
+  branch        Branch?         @relation(fields: [branchId], references: [id])
+  locations     StockLocation[]
+  balances      StockBalance[]
+  staff         WarehouseStaff[]
+  goodsReceipts GoodsReceipt[]
+  pickLists     PickList[]
+  stockCounts   StockCount[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -1184,15 +1191,29 @@ model Warehouse {
 
 // A bin / aisle / rack within a warehouse. Descriptive only in this phase —
 // StockBalance is tracked at warehouse granularity, not location.
+// Warehouse Management (1 September 2026): a bin's function in the flow —
+// receiving dock, storage, pick face, pack bench, dispatch lane, or a
+// quarantine hold. Descriptive; StockBalance is still tracked at warehouse
+// granularity, not bin.
+enum StockLocationKind {
+  receiving
+  storage
+  picking
+  packing
+  dispatch
+  quarantine
+}
+
 model StockLocation {
-  id          String   @id @default(uuid())
-  warehouseId String   @map("warehouse_id")
-  code        String   @db.VarChar(30)
-  name        String   @db.VarChar(150)
+  id          String            @id @default(uuid())
+  warehouseId String            @map("warehouse_id")
+  code        String            @db.VarChar(30)
+  name        String            @db.VarChar(150)
+  kind        StockLocationKind @default(storage)
   description String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  isActive    Boolean           @default(true) @map("is_active")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
 
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
@@ -1296,6 +1317,183 @@ model StockMovement {
   @@index([productId])
   @@index([warehouseId])
   @@map("stock_movements")
+}
+
+// ========================= Warehouse Management (1 Sep 2026) =====================
+// A warehouse operations layer on top of the Inventory Management foundation
+// (warehouses / locations / per-warehouse balances built the same day):
+// warehouse staff, a receiving document (GoodsReceipt), a picking → packing →
+// dispatch job (PickList) and a physical count + reconciliation session
+// (StockCount). All reuse product.manage / product.viewAll — no new
+// permission. The multi-branch Warehouse Management System of docx/20 is a
+// separate, deeper build; this is the single-tenant operations layer.
+
+enum WarehouseRole {
+  manager
+  supervisor
+  receiver
+  picker
+  packer
+  dispatcher
+}
+
+model WarehouseStaff {
+  id          String        @id @default(uuid())
+  warehouseId String        @map("warehouse_id")
+  employeeId  String        @map("employee_id") // logical ref -> employees.id
+  role        WarehouseRole
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, employeeId, role])
+  @@index([warehouseId])
+  @@map("warehouse_staff")
+}
+
+enum GoodsReceiptStatus {
+  draft
+  received
+  cancelled
+}
+
+model GoodsReceipt {
+  id            String             @id @default(uuid())
+  companyId     String             @map("company_id")
+  warehouseId   String             @map("warehouse_id")
+  receiptNumber String             @map("receipt_number") @db.VarChar(40)
+  supplierId    String?            @map("supplier_id") // logical ref -> suppliers.id
+  reference     String?            @db.VarChar(100)
+  note          String?
+  status        GoodsReceiptStatus @default(draft)
+  receivedBy    String?            @map("received_by") // userId
+  receivedAt    DateTime?          @map("received_at")
+  createdBy     String             @map("created_by")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  warehouse Warehouse          @relation(fields: [warehouseId], references: [id])
+  lines     GoodsReceiptLine[]
+
+  @@unique([companyId, receiptNumber])
+  @@index([companyId])
+  @@index([warehouseId])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptLine {
+  id          String    @id @default(uuid())
+  receiptId   String    @map("receipt_id")
+  productId   String    @map("product_id")
+  quantity    Int
+  batchNumber String?   @map("batch_number") @db.VarChar(80)
+  expiryDate  DateTime? @map("expiry_date") @db.Date
+  locationId  String?   @map("location_id")
+  note        String?
+
+  receipt GoodsReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product Product      @relation(fields: [productId], references: [id])
+
+  @@index([receiptId])
+  @@map("goods_receipt_lines")
+}
+
+enum PickListStatus {
+  pending
+  picking
+  picked
+  packed
+  dispatched
+  cancelled
+}
+
+model PickList {
+  id                   String         @id @default(uuid())
+  companyId            String         @map("company_id")
+  warehouseId          String         @map("warehouse_id")
+  pickNumber           String         @map("pick_number") @db.VarChar(40)
+  orderId              String?        @map("order_id") // logical ref -> orders.id
+  assignedToEmployeeId String?        @map("assigned_to_employee_id") // logical ref -> employees.id
+  reference            String?        @db.VarChar(100)
+  note                 String?
+  status               PickListStatus @default(pending)
+  pickedAt             DateTime?      @map("picked_at")
+  packedAt             DateTime?      @map("packed_at")
+  dispatchedAt         DateTime?      @map("dispatched_at")
+  createdBy            String         @map("created_by")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  warehouse Warehouse      @relation(fields: [warehouseId], references: [id])
+  lines     PickListLine[]
+
+  @@unique([companyId, pickNumber])
+  @@index([companyId])
+  @@index([warehouseId])
+  @@map("pick_lists")
+}
+
+model PickListLine {
+  id                String  @id @default(uuid())
+  pickListId        String  @map("pick_list_id")
+  productId         String  @map("product_id")
+  quantityRequested Int     @map("quantity_requested")
+  quantityPicked    Int     @default(0) @map("quantity_picked")
+  locationId        String? @map("location_id")
+  note              String?
+
+  pickList PickList @relation(fields: [pickListId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@index([pickListId])
+  @@map("pick_list_lines")
+}
+
+enum StockCountStatus {
+  open
+  counting
+  reconciled
+  cancelled
+}
+
+model StockCount {
+  id           String           @id @default(uuid())
+  companyId    String           @map("company_id")
+  warehouseId  String           @map("warehouse_id")
+  countNumber  String           @map("count_number") @db.VarChar(40)
+  reference    String?          @db.VarChar(100)
+  note         String?
+  status       StockCountStatus @default(open)
+  reconciledAt DateTime?        @map("reconciled_at")
+  createdBy    String           @map("created_by")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  warehouse Warehouse        @relation(fields: [warehouseId], references: [id])
+  lines     StockCountLine[]
+
+  @@unique([companyId, countNumber])
+  @@index([companyId])
+  @@index([warehouseId])
+  @@map("stock_counts")
+}
+
+model StockCountLine {
+  id              String  @id @default(uuid())
+  stockCountId    String  @map("stock_count_id")
+  productId       String  @map("product_id")
+  systemQuantity  Int     @map("system_quantity") // snapshot when the line was added
+  countedQuantity Int?    @map("counted_quantity")
+  variance        Int? // countedQuantity - systemQuantity, set on reconcile
+  locationId      String? @map("location_id")
+
+  stockCount StockCount @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id])
+
+  @@index([stockCountId])
+  @@map("stock_count_lines")
 }
 
 // ============================== Accounting Service ==============================

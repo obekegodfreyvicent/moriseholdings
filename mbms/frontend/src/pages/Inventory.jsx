@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import { Money } from '../components/Money';
 import { apiRequest, apiRequestWithMeta, ApiRequestError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { WarehouseOps } from './WarehouseOps';
 
 // Admin » Inventory (28 August 2026); extended into full Inventory Management
 // (1 September 2026): warehouses & stock locations, per-warehouse balances,
@@ -171,6 +172,7 @@ export function InventoryPage() {
           {[
             ['stock', 'Stock levels'],
             ['warehouses', 'Warehouses'],
+            ['warehouse', 'Warehouse ops'],
             ['movements', 'Movements'],
             ['reports', 'Reports'],
           ].map(([k, label]) => (
@@ -337,6 +339,15 @@ export function InventoryPage() {
         </>
       )}
 
+      {tab === 'warehouse' && (
+        <WarehouseOps
+          companyId={companyId}
+          companies={companies || []}
+          warehouses={warehouses}
+          canManage={canManage}
+        />
+      )}
+
       {tab === 'reports' && <ReportsTab companyId={companyId} warehouses={sameCompanyWarehouses} />}
 
       {adjustRow && (
@@ -433,10 +444,13 @@ function WarehousesTab({ companyId, companies, canManage, onChanged }) {
   );
 }
 
+const LOCATION_KINDS = ['receiving', 'storage', 'picking', 'packing', 'dispatch', 'quarantine'];
+
 function LocationsPanel({ warehouseId, canManage, onChanged }) {
   const [rows, setRows] = useState(null);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [kind, setKind] = useState('storage');
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -457,9 +471,10 @@ function LocationsPanel({ warehouseId, canManage, onChanged }) {
     setSaving(true);
     setError(null);
     try {
-      await apiRequest(`/inventory/warehouses/${warehouseId}/locations`, { method: 'POST', body: { code, name } });
+      await apiRequest(`/inventory/warehouses/${warehouseId}/locations`, { method: 'POST', body: { code, name, kind } });
       setCode('');
       setName('');
+      setKind('storage');
       load();
       onChanged();
     } catch (err) {
@@ -481,6 +496,7 @@ function LocationsPanel({ warehouseId, canManage, onChanged }) {
           {rows.map((l) => (
             <li key={l.id}>
               <span className="mono">{l.code}</span> — {l.name}
+              {l.kind ? <span className="badge neutral" style={{ marginLeft: 6 }}>{l.kind}</span> : null}
               {l.description ? <span style={{ color: '#5b6a85' }}> · {l.description}</span> : null}
               {!l.isActive && <span className="badge neutral" style={{ marginLeft: 6 }}>inactive</span>}
             </li>
@@ -488,9 +504,12 @@ function LocationsPanel({ warehouseId, canManage, onChanged }) {
         </ul>
       )}
       {canManage && (
-        <form onSubmit={add} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <form onSubmit={add} style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
           <input className="input" placeholder="Code" value={code} onChange={(e) => setCode(e.target.value)} required style={{ maxWidth: 120 }} />
-          <input className="input" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required style={{ maxWidth: 240 }} />
+          <input className="input" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required style={{ maxWidth: 220 }} />
+          <select className="select" value={kind} onChange={(e) => setKind(e.target.value)} style={{ maxWidth: 140 }}>
+            {LOCATION_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
           <button className="btn btn-secondary" type="submit" disabled={saving}>{saving ? 'Adding…' : 'Add'}</button>
         </form>
       )}

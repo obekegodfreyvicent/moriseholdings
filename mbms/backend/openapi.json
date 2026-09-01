@@ -2964,6 +2964,623 @@
         }
       }
     },
+    "/api/v1/inventory/lookup": {
+      "get": {
+        "operationId": "WarehouseManagementController_lookup",
+        "parameters": [
+          {
+            "name": "barcode",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/warehouses/{id}/staff": {
+      "get": {
+        "operationId": "WarehouseManagementController_listStaff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "WarehouseManagementController_addStaff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddWarehouseStaffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/warehouse-staff/{staffId}": {
+      "patch": {
+        "operationId": "WarehouseManagementController_updateStaff",
+        "parameters": [
+          {
+            "name": "staffId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWarehouseStaffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "WarehouseManagementController_removeStaff",
+        "parameters": [
+          {
+            "name": "staffId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/goods-receipts": {
+      "get": {
+        "operationId": "WarehouseManagementController_listGoodsReceipts",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "WarehouseManagementController_createGoodsReceipt",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoodsReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/goods-receipts/{id}": {
+      "get": {
+        "operationId": "WarehouseManagementController_getGoodsReceipt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/goods-receipts/{id}/receive": {
+      "post": {
+        "operationId": "WarehouseManagementController_receiveGoodsReceipt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/goods-receipts/{id}/cancel": {
+      "post": {
+        "operationId": "WarehouseManagementController_cancelGoodsReceipt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/pick-lists": {
+      "get": {
+        "operationId": "WarehouseManagementController_listPickLists",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "WarehouseManagementController_createPickList",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePickListDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/pick-lists/{id}": {
+      "get": {
+        "operationId": "WarehouseManagementController_getPickList",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/pick-lists/{id}/assign": {
+      "post": {
+        "operationId": "WarehouseManagementController_assignPickList",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignPickListDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/pick-lists/{id}/pick": {
+      "post": {
+        "operationId": "WarehouseManagementController_pick",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/pick-lists/{id}/pack": {
+      "post": {
+        "operationId": "WarehouseManagementController_packPickList",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/pick-lists/{id}/dispatch": {
+      "post": {
+        "operationId": "WarehouseManagementController_dispatchPickList",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/pick-lists/{id}/cancel": {
+      "post": {
+        "operationId": "WarehouseManagementController_cancelPickList",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/stock-counts": {
+      "get": {
+        "operationId": "WarehouseManagementController_listStockCounts",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "WarehouseManagementController_createStockCount",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStockCountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/stock-counts/{id}": {
+      "get": {
+        "operationId": "WarehouseManagementController_getStockCount",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/stock-counts/{id}/lines": {
+      "post": {
+        "operationId": "WarehouseManagementController_addStockCountLines",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddStockCountLinesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/stock-counts/{id}/lines/{lineId}": {
+      "patch": {
+        "operationId": "WarehouseManagementController_setCountedQuantity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lineId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCountedQuantityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/stock-counts/{id}/reconcile": {
+      "post": {
+        "operationId": "WarehouseManagementController_reconcileStockCount",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/stock-counts/{id}/cancel": {
+      "post": {
+        "operationId": "WarehouseManagementController_cancelStockCount",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/marketing/discount-codes": {
       "get": {
         "operationId": "MarketingController_listCodes",
@@ -10802,6 +11419,17 @@
             "type": "string",
             "maxLength": 150
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "receiving",
+              "storage",
+              "picking",
+              "packing",
+              "dispatch",
+              "quarantine"
+            ]
+          },
           "description": {
             "type": "string",
             "maxLength": 500
@@ -10819,6 +11447,17 @@
             "type": "string",
             "maxLength": 150
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "receiving",
+              "storage",
+              "picking",
+              "packing",
+              "dispatch",
+              "quarantine"
+            ]
+          },
           "description": {
             "type": "string",
             "maxLength": 500
@@ -10827,6 +11466,290 @@
             "type": "boolean"
           }
         }
+      },
+      "AddWarehouseStaffDto": {
+        "type": "object",
+        "properties": {
+          "employeeId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "manager",
+              "supervisor",
+              "receiver",
+              "picker",
+              "packer",
+              "dispatcher"
+            ]
+          }
+        },
+        "required": [
+          "employeeId",
+          "role"
+        ]
+      },
+      "UpdateWarehouseStaffDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "manager",
+              "supervisor",
+              "receiver",
+              "picker",
+              "packer",
+              "dispatcher"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "GoodsReceiptLineDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          },
+          "batchNumber": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "expiryDate": {
+            "type": "string"
+          },
+          "locationId": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "quantity"
+        ]
+      },
+      "CreateGoodsReceiptDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string"
+          },
+          "supplierId": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoodsReceiptLineDto"
+            }
+          }
+        },
+        "required": [
+          "companyId",
+          "warehouseId",
+          "lines"
+        ]
+      },
+      "PickListLineDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "quantityRequested": {
+            "type": "number",
+            "minimum": 1
+          },
+          "locationId": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "quantityRequested"
+        ]
+      },
+      "CreatePickListDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "assignedToEmployeeId": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickListLineDto"
+            }
+          }
+        },
+        "required": [
+          "companyId",
+          "warehouseId"
+        ]
+      },
+      "AssignPickListDto": {
+        "type": "object",
+        "properties": {
+          "assignedToEmployeeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignedToEmployeeId"
+        ]
+      },
+      "PickQuantityDto": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "string"
+          },
+          "quantityPicked": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "lineId",
+          "quantityPicked"
+        ]
+      },
+      "PickDto": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickQuantityDto"
+            }
+          }
+        }
+      },
+      "StockCountLineDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "locationId": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateStockCountDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "full",
+              "partial"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockCountLineDto"
+            }
+          }
+        },
+        "required": [
+          "companyId",
+          "warehouseId"
+        ]
+      },
+      "AddStockCountLinesDto": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockCountLineDto"
+            }
+          }
+        },
+        "required": [
+          "lines"
+        ]
+      },
+      "SetCountedQuantityDto": {
+        "type": "object",
+        "properties": {
+          "countedQuantity": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "countedQuantity"
+        ]
       },
       "CreateDiscountCodeDto": {
         "type": "object",
