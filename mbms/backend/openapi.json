@@ -1861,6 +1861,264 @@
         }
       }
     },
+    "/api/v1/suppliers/{id}/suspend": {
+      "post": {
+        "operationId": "SuppliersController_suspend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspendSupplierDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}/unsuspend": {
+      "post": {
+        "operationId": "SuppliersController_unsuspend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}/contacts": {
+      "get": {
+        "operationId": "SuppliersController_listContacts",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "SuppliersController_addContact",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupplierContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}/contacts/{contactId}": {
+      "patch": {
+        "operationId": "SuppliersController_updateContact",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "contactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSupplierContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "SuppliersController_removeContact",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "contactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}/evaluations": {
+      "get": {
+        "operationId": "SuppliersController_listEvaluations",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "SuppliersController_addEvaluation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupplierEvaluationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}/evaluations/{evaluationId}": {
+      "delete": {
+        "operationId": "SuppliersController_removeEvaluation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "evaluationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}/performance": {
+      "get": {
+        "operationId": "SuppliersController_performance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/products": {
       "get": {
         "operationId": "ProductsController_list",
@@ -5230,6 +5488,137 @@
         }
       }
     },
+    "/api/v1/payroll/salary-components": {
+      "get": {
+        "operationId": "PayrollController_listComponents",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "employeeId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "PayrollController_createComponent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSalaryComponentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/payroll/salary-structure/{employeeId}": {
+      "get": {
+        "operationId": "PayrollController_salaryStructure",
+        "parameters": [
+          {
+            "name": "employeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "year",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "month",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/payroll/salary-components/{id}": {
+      "patch": {
+        "operationId": "PayrollController_updateComponent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSalaryComponentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "PayrollController_deleteComponent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/my-hr/summary": {
       "get": {
         "operationId": "MyHrController_summary",
@@ -7000,6 +7389,356 @@
         }
       }
     },
+    "/api/v1/delivery/drivers": {
+      "get": {
+        "operationId": "DeliveryController_listDrivers",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "DeliveryController_createDriver",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliveryDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/drivers/{id}": {
+      "put": {
+        "operationId": "DeliveryController_updateDriver",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeliveryDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/metrics": {
+      "get": {
+        "operationId": "DeliveryController_metrics",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/eligible-orders": {
+      "get": {
+        "operationId": "DeliveryController_eligibleOrders",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery": {
+      "get": {
+        "operationId": "DeliveryController_list",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "DeliveryController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/{id}": {
+      "get": {
+        "operationId": "DeliveryController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/{id}/assign": {
+      "post": {
+        "operationId": "DeliveryController_assign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/{id}/status": {
+      "post": {
+        "operationId": "DeliveryController_advance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceDeliveryStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/{id}/proof": {
+      "post": {
+        "operationId": "DeliveryController_proof",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProofOfDeliveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/{id}/fail": {
+      "post": {
+        "operationId": "DeliveryController_fail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailDeliveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/{id}/cancel": {
+      "post": {
+        "operationId": "DeliveryController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelDeliveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/support/tickets": {
       "get": {
         "operationId": "SupportController_list",
@@ -7543,6 +8282,33 @@
         "responses": {
           "200": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/customer-portal/orders/{id}/delivery": {
+      "get": {
+        "operationId": "CustomerOrdersController_delivery",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         }
       }
@@ -9059,6 +9825,124 @@
           }
         }
       },
+      "SuspendSupplierDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "until": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "CreateSupplierContactDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateSupplierContactDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "CreateSupplierEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "periodLabel": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "deliveryScore": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "qualityScore": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "priceScore": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "communicationScore": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "complianceScore": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comments": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "periodLabel",
+          "deliveryScore",
+          "qualityScore",
+          "priceScore",
+          "communicationScore",
+          "complianceScore"
+        ]
+      },
       "CreateProductDto": {
         "type": "object",
         "properties": {
@@ -10376,6 +11260,76 @@
           }
         }
       },
+      "CreateSalaryComponentDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "employeeId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "allowance",
+              "overtime",
+              "bonus"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "amount": {
+            "type": "string"
+          },
+          "recurring": {
+            "type": "boolean"
+          },
+          "periodYear": {
+            "type": "number",
+            "minimum": 2000,
+            "maximum": 2100
+          },
+          "periodMonth": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "companyId",
+          "employeeId",
+          "type",
+          "label",
+          "amount"
+        ]
+      },
+      "UpdateSalaryComponentDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "amount": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        }
+      },
       "RequestMyAdvanceDto": {
         "type": "object",
         "properties": {
@@ -11031,6 +11985,221 @@
         "properties": {
           "reason": {
             "type": "string"
+          }
+        }
+      },
+      "CreateDeliveryDriverDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "employeeId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "licenseNumber": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "vehicleReg": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "vehicleType": {
+            "type": "string",
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "companyId",
+          "name"
+        ]
+      },
+      "UpdateDeliveryDriverDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "licenseNumber": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "vehicleReg": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "vehicleType": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "invoiceId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "goods",
+              "invoice"
+            ]
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "originBranchId": {
+            "type": "string"
+          },
+          "dropAddress": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "dropContactName": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "dropContactPhone": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "scheduledDate": {
+            "type": "string"
+          },
+          "driverId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId"
+        ]
+      },
+      "AssignDriverDto": {
+        "type": "object",
+        "properties": {
+          "driverId": {
+            "type": "string"
+          },
+          "scheduledDate": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "driverId"
+        ]
+      },
+      "AdvanceDeliveryStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "assigned",
+              "picked_up",
+              "in_transit"
+            ]
+          },
+          "locationText": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ProofOfDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "proofType": {
+            "type": "string",
+            "enum": [
+              "signature",
+              "photo",
+              "otp"
+            ]
+          },
+          "recipientName": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "proofReference": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "locationText": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "proofType",
+          "recipientName"
+        ]
+      },
+      "FailDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "locationText": {
+            "type": "string",
+            "maxLength": 160
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "CancelDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500
           }
         }
       },
