@@ -6617,6 +6617,114 @@
         }
       }
     },
+    "/api/v1/executive/questions": {
+      "get": {
+        "operationId": "ExecutiveController_questions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/executive/overview": {
+      "get": {
+        "operationId": "ExecutiveController_overview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/summary": {
+      "get": {
+        "operationId": "DashboardController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/accounting-summary": {
+      "get": {
+        "operationId": "DashboardController_accountingSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/financials": {
+      "get": {
+        "operationId": "DashboardController_financials",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/charts": {
+      "get": {
+        "operationId": "DashboardController_charts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/alerts": {
+      "get": {
+        "operationId": "DashboardController_alerts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/companies/{id}": {
+      "get": {
+        "operationId": "DashboardController_companyDashboard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/recent-activity": {
+      "get": {
+        "operationId": "DashboardController_recentActivity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/projects": {
       "get": {
         "operationId": "ProjectsController_list",
@@ -7338,92 +7446,6 @@
             }
           }
         ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/dashboard/summary": {
-      "get": {
-        "operationId": "DashboardController_summary",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/dashboard/accounting-summary": {
-      "get": {
-        "operationId": "DashboardController_accountingSummary",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/dashboard/financials": {
-      "get": {
-        "operationId": "DashboardController_financials",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/dashboard/charts": {
-      "get": {
-        "operationId": "DashboardController_charts",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/dashboard/alerts": {
-      "get": {
-        "operationId": "DashboardController_alerts",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/dashboard/companies/{id}": {
-      "get": {
-        "operationId": "DashboardController_companyDashboard",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/dashboard/recent-activity": {
-      "get": {
-        "operationId": "DashboardController_recentActivity",
-        "parameters": [],
         "responses": {
           "200": {
             "description": ""

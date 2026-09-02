@@ -22,6 +22,7 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { AssetsModule } from './assets/assets.module';
 import { FleetModule } from './fleet/fleet.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { ExecutiveModule } from './executive/executive.module';
 import { ProjectsModule } from './projects/projects.module';
 import { ReportsModule } from './reports/reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -69,6 +70,7 @@ import { HealthController } from './health.controller';
     AssetsModule,
     FleetModule,
     AlertsModule,
+    ExecutiveModule,
     ProjectsModule,
     ReportsModule,
     DashboardModule,

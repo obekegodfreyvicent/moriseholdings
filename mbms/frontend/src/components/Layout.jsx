@@ -63,6 +63,7 @@ const NAV_GROUPS = [
     label: 'Financial & Accounting',
     items: [
       { to: '/finance', icon: '\u{1F4B2}', label: 'Financial & Accounting' },
+      { to: '/executive', icon: '\u{1F9E9}', label: 'Executive Q&A' },
       { to: '/accounting', icon: '\u{1F4D2}', label: 'General Ledger & Journals' },
       { to: '/accounts-payable', icon: '\u{1F4E4}', label: 'Accounts Payable' },
       { to: '/expenses', icon: '\u{1F9FE}', label: 'Expenses' },
