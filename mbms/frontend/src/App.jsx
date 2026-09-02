@@ -12,6 +12,7 @@ import { SuppliersPage } from './pages/Suppliers';
 import { ProductsPage } from './pages/Products';
 import { InventoryPage } from './pages/Inventory';
 import { FleetPage } from './pages/Fleet';
+import { AlertsPage } from './pages/Alerts';
 import { MarketingPage } from './pages/Marketing';
 import { CmsPage } from './pages/Cms';
 import { HrDashboardPage } from './pages/Hr';
@@ -107,6 +108,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <FleetPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/alerts"
+            element={
+              <RequireAuth>
+                <AlertsPage />
               </RequireAuth>
             }
           />

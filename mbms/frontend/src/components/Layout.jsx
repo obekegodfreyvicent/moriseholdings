@@ -22,6 +22,7 @@ const NAV_GROUPS = [
       { to: '/orders', icon: '\u{1F6D2}', label: 'Order Management' },
       { to: '/inventory', icon: '\u{1F5C4}', label: 'Inventory' },
       { to: '/fleet', icon: '\u{1F69B}', label: 'Fleet' },
+      { to: '/alerts', icon: '\u{1F514}', label: 'Alerts' },
       { to: '/customers', icon: '\u{1F91D}', label: 'Customers (CRM)' },
       { to: '/support-tickets', icon: '\u{1F3AB}', label: 'Support Tickets' },
       { to: '/marketing', icon: '\u{1F4E3}', label: 'Marketing & Promos' },
