@@ -1,0 +1,29 @@
+morise.docx was open in LibreOffice during the "Every Social Media Platform
+Managed From One CMS Roster" pass (2 September 2026), so this section was NOT
+applied automatically. Paste it in as a new Heading 1 section at the end of the
+document, following the last "Implementation Status Update N" entry, then delete
+this file. (Docs 02-18 received this as "Implementation Status Update 89"; the
+README's morise.docx cross-reference calls it "Update 64". Use morise.docx's own
+running number — the next integer after the last "Implementation Status Update N"
+heading already in the file.)
+
+============================================================
+
+HEADING (Heading 1 style):
+Implementation Status Update <next N> (2 September 2026) — Every Social Media Platform Managed From One CMS Roster
+
+BODY (Body Text style, one paragraph per block below):
+
+Following Update 88 (a shared social-content record with a one-click apply to all channels), an administrator asked that the social media channels be managed from the CMS / Site Builder section as one place that reflects every social media platform — so the panel shows all supported platforms as a fixed list, whether or not a channel row exists yet, rather than only the channels that happen to have been added.
+
+The CMS / Site Builder "Social media channels" panel is now a fixed roster of every supported platform (Facebook, X, Instagram, LinkedIn, YouTube, TikTok, WhatsApp, Telegram, Other). Each platform is one editable row — URL, label, visibility, order — present at all times; a platform with no URL shows as "not set" with its expected URL shape as a placeholder. Saving a row creates the channel; clearing its URL and saving removes it; the visibility toggle and the up/down order controls act on the platforms that have a row. The per-platform URL placeholder is built from the shared handle in the Update 88 record where one is set.
+
+Backing this: the social_links table now has a UNIQUE constraint on platform (migration 20260902160000_social_link_platform_unique — it de-duplicates any existing rows first, keeping the earliest per platform), so each platform maps to at most one channel. Two endpoints were added under the existing cms.manage / cms.viewAll permissions (no new permission): GET /api/v1/cms/social-links/roster returns all nine platforms in canonical order with any existing row merged in and a URL hint; PUT /api/v1/cms/social-links/platform/:platform creates, updates or (on an explicit empty URL) deletes that platform's single row. The free-form "add a channel" form is replaced by the roster, and the old POST /cms/social-links now rejects a second row for a platform with a clear message. Every mutation is audited as before.
+
+Verified end to end against the running system: the roster returns all nine platforms with the four seeded ones (Facebook, X, Instagram, LinkedIn shown; WhatsApp hidden) merged in and the rest marked "not set"; PUT platform/youtube created a row, PUT platform/facebook updated its URL, PUT platform/whatsapp with an empty URL deleted it, and POST /cms/social-links for an existing platform returned a 409. nest build, admin vite build and storefront vite build all clean; prisma migrate deploy applied; openapi.json regenerated (357 paths, 455 operations). The Update 88 shared-content panel and its one-click actions are unchanged and sit above the roster.
+
+HEADING (Heading 2 style):
+Impact on this document
+
+BODY (Body Text style):
+Company & Holdings Management — the social media presence for the holding company and every subsidiary is now managed from one CMS roster that always lists every supported platform, so an administrator can see and set each one in place. Additive change — one UNIQUE constraint (with an in-migration de-dupe), two endpoints on the existing CMS controller under existing permissions; the Update 88 shared-content record and every other module are untouched.

@@ -2988,8 +2988,9 @@ async function main() {
   }
 
   // Social media channels (29 August 2026) — managed in Admin » CMS / Site
-  // Builder, shown in the storefront / corporate-site footer. Fixed ids so a
-  // re-seed is idempotent.
+  // Builder, shown in the storefront / corporate-site footer. Keyed by
+  // platform (one row per platform since 2 September 2026) so a re-seed is
+  // idempotent.
   for (const sl of [
     { id: 'e1000000-0000-4000-8000-000000000001', platform: 'facebook' as const, label: 'Facebook', url: 'https://facebook.com/moriseholdings', sortOrder: 1 },
     { id: 'e1000000-0000-4000-8000-000000000002', platform: 'x' as const, label: 'X (Twitter)', url: 'https://x.com/moriseholdings', sortOrder: 2 },
@@ -2998,7 +2999,7 @@ async function main() {
     { id: 'e1000000-0000-4000-8000-000000000005', platform: 'whatsapp' as const, label: 'WhatsApp', url: 'https://wa.me/256700000000', sortOrder: 5, isVisible: false },
   ]) {
     await prisma.socialLink.upsert({
-      where: { id: sl.id },
+      where: { platform: sl.platform },
       update: {},
       create: {
         id: sl.id,

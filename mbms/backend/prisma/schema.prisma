@@ -2797,7 +2797,10 @@ enum SocialPlatform {
 
 model SocialLink {
   id        String         @id @default(uuid())
-  platform  SocialPlatform
+  // One row per platform (2 September 2026) — the CMS / Site Builder shows a
+  // fixed roster of every supported platform, so each platform has at most
+  // one manageable channel row.
+  platform  SocialPlatform @unique
   label     String?        @db.VarChar(120)
   url       String         @db.VarChar(500)
   sortOrder Int            @default(0) @map("sort_order")

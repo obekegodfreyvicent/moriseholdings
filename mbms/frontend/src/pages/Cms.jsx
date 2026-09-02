@@ -112,11 +112,12 @@ const PLATFORM_LABEL = {
 };
 
 function SocialLinksPanel({ canManage }) {
-  const [links, setLinks] = useState(null);
+  // The fixed roster — every supported platform, whether or not a channel row
+  // exists yet (2 September 2026). One place to manage all social channels.
+  const [roster, setRoster] = useState(null);
+  const [draft, setDraft] = useState({}); // { [platform]: { url, label } }
   const [error, setError] = useState(null);
-  const [busyId, setBusyId] = useState(null);
-  const [form, setForm] = useState({ platform: 'facebook', url: '', label: '' });
-  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(null); // platform currently saving
 
   // Shared social content (2 September 2026) — one canonical record pushed to
   // every channel in a single click, so all channels carry the same info.
@@ -129,9 +130,13 @@ function SocialLinksPanel({ canManage }) {
   async function load() {
     setError(null);
     try {
-      setLinks(await apiRequest('/cms/social-links'));
+      const rows = await apiRequest('/cms/social-links/roster');
+      setRoster(rows);
+      const d = {};
+      for (const r of rows) d[r.platform] = { url: r.url || '', label: r.label || '' };
+      setDraft(d);
     } catch (err) {
-      setLinks([]);
+      setRoster([]);
       setError(err instanceof ApiRequestError ? err.apiError.message : 'Unable to load social channels.');
     }
   }
@@ -205,57 +210,66 @@ function SocialLinksPanel({ canManage }) {
     } finally { setCBusy(false); }
   }
 
-  async function add(e) {
-    e.preventDefault();
-    setAdding(true); setError(null);
-    try {
-      const nextOrder = (links || []).reduce((m, l) => Math.max(m, l.sortOrder), 0) + 1;
-      await apiRequest('/cms/social-links', {
-        method: 'POST',
-        body: { platform: form.platform, url: form.url.trim(), label: form.label.trim() || undefined, sortOrder: nextOrder },
-      });
-      setForm({ platform: 'facebook', url: '', label: '' });
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.apiError.message : 'Add failed.');
-    } finally { setAdding(false); }
+  function setField(platform, field, value) {
+    setDraft((d) => ({ ...d, [platform]: { ...d[platform], [field]: value } }));
   }
 
-  async function patch(id, body) {
-    setBusyId(id); setError(null);
+  // Save one platform's row: create / update, or (empty URL on an existing
+  // row) delete. PUT /cms/social-links/platform/:platform.
+  async function savePlatform(row) {
+    const d = draft[row.platform] || { url: '', label: '' };
+    const url = d.url.trim();
+    if (row.exists && !url && !window.confirm(`Remove the ${PLATFORM_LABEL[row.platform]} channel? It will disappear from the storefront.`)) return;
+    setBusy(row.platform); setError(null);
     try {
-      await apiRequest(`/cms/social-links/${id}`, { method: 'PATCH', body });
+      await apiRequest(`/cms/social-links/platform/${row.platform}`, {
+        method: 'PUT',
+        body: {
+          url,
+          label: d.label.trim() || null,
+          isVisible: row.exists ? row.isVisible : true,
+        },
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.apiError.message : 'Save failed.');
+    } finally { setBusy(null); }
+  }
+
+  async function setVisible(row, isVisible) {
+    setBusy(row.platform); setError(null);
+    try {
+      await apiRequest(`/cms/social-links/platform/${row.platform}`, {
+        method: 'PUT',
+        body: { isVisible },
+      });
       await load();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.apiError.message : 'Update failed.');
-    } finally { setBusyId(null); }
+    } finally { setBusy(null); }
   }
 
-  async function remove(id, label) {
-    if (!window.confirm(`Remove the ${label} channel? It will disappear from the storefront.`)) return;
-    setBusyId(id); setError(null);
+  // Reorder among the platforms that have a row, swapping sortOrder values.
+  async function move(row, dir) {
+    const present = roster.filter((r) => r.exists).sort((a, b) => a.sortOrder - b.sortOrder);
+    const i = present.findIndex((r) => r.platform === row.platform);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= present.length) return;
+    setBusy(row.platform); setError(null);
     try {
-      await apiRequest(`/cms/social-links/${id}`, { method: 'DELETE' });
+      await apiRequest(`/cms/social-links/platform/${row.platform}`, { method: 'PUT', body: { sortOrder: present[j].sortOrder } });
+      await apiRequest(`/cms/social-links/platform/${present[j].platform}`, { method: 'PUT', body: { sortOrder: row.sortOrder } });
       await load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.apiError.message : 'Remove failed.');
-    } finally { setBusyId(null); }
-  }
-
-  function move(link, dir) {
-    const sorted = [...links].sort((a, b) => a.sortOrder - b.sortOrder);
-    const i = sorted.findIndex((l) => l.id === link.id);
-    const j = i + dir;
-    if (j < 0 || j >= sorted.length) return;
-    patch(link.id, { sortOrder: sorted[j].sortOrder });
-    patch(sorted[j].id, { sortOrder: link.sortOrder });
+      setError(err instanceof ApiRequestError ? err.apiError.message : 'Reorder failed.');
+    } finally { setBusy(null); }
   }
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
         <h2 style={{ margin: 0, fontSize: 16 }}>Social media channels</h2>
-        <span style={{ fontSize: 12, color: '#7c8aa3' }}>Shown in the storefront footer. Hidden channels are kept but not displayed.</span>
+        <span style={{ fontSize: 12, color: '#7c8aa3' }}>Every supported platform, managed from here. Shown in the storefront footer; a platform with no URL, or one switched off, is simply not displayed.</span>
       </div>
 
       {error && <div className="banner error" style={{ marginTop: 10 }}>{error}</div>}
@@ -315,71 +329,87 @@ function SocialLinksPanel({ canManage }) {
         )}
       </div>
 
-      {links === null ? (
+      {roster === null ? (
         <div className="loading">Loading…</div>
-      ) : links.length === 0 ? (
-        <div className="empty" style={{ marginTop: 10 }}>No social channels yet.</div>
       ) : (
-        <table style={{ marginTop: 10, width: '100%' }}>
+        <table style={{ marginTop: 12, width: '100%' }}>
           <thead>
-            <tr><th>Order</th><th>Platform</th><th>Label</th><th>URL</th><th>Shown</th>{canManage && <th />}</tr>
+            <tr>
+              <th style={{ width: 60 }}>Order</th>
+              <th style={{ width: 120 }}>Platform</th>
+              <th>URL</th>
+              <th style={{ width: 160 }}>Label</th>
+              <th style={{ width: 90 }}>Shown</th>
+              {canManage && <th style={{ width: 80 }} />}
+            </tr>
           </thead>
           <tbody>
-            {[...links].sort((a, b) => a.sortOrder - b.sortOrder).map((l) => (
-              <tr key={l.id}>
-                <td>
-                  {canManage ? (
-                    <span style={{ whiteSpace: 'nowrap' }}>
-                      <button className="btn btn-secondary" style={{ padding: '2px 7px' }} disabled={busyId === l.id} onClick={() => move(l, -1)}>↑</button>{' '}
-                      <button className="btn btn-secondary" style={{ padding: '2px 7px' }} disabled={busyId === l.id} onClick={() => move(l, 1)}>↓</button>
-                    </span>
-                  ) : l.sortOrder}
-                </td>
-                <td>{PLATFORM_LABEL[l.platform] || l.platform}</td>
-                <td>{l.label || <span style={{ color: '#7c8aa3' }}>—</span>}</td>
-                <td className="mono" style={{ fontSize: 12, maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  <a href={l.url} target="_blank" rel="noreferrer">{l.url}</a>
-                </td>
-                <td>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={l.isVisible}
-                      disabled={!canManage || busyId === l.id}
-                      onChange={(e) => patch(l.id, { isVisible: e.target.checked })}
-                    />
-                    <span className={`badge ${l.isVisible ? 'success' : 'neutral'}`}><span className="dot" />{l.isVisible ? 'shown' : 'hidden'}</span>
-                  </label>
-                </td>
-                {canManage && (
-                  <td style={{ textAlign: 'right' }}>
-                    <button className="btn btn-secondary" disabled={busyId === l.id} onClick={() => remove(l.id, PLATFORM_LABEL[l.platform] || l.platform)}>Remove</button>
+            {roster.map((r) => {
+              const d = draft[r.platform] || { url: '', label: '' };
+              const dirty = d.url.trim() !== (r.url || '') || d.label.trim() !== (r.label || '');
+              return (
+                <tr key={r.platform}>
+                  <td>
+                    {canManage && r.exists ? (
+                      <span style={{ whiteSpace: 'nowrap' }}>
+                        <button className="btn btn-secondary" style={{ padding: '2px 7px' }} disabled={busy === r.platform} onClick={() => move(r, -1)}>↑</button>{' '}
+                        <button className="btn btn-secondary" style={{ padding: '2px 7px' }} disabled={busy === r.platform} onClick={() => move(r, 1)}>↓</button>
+                      </span>
+                    ) : (
+                      <span style={{ color: '#7c8aa3' }}>{r.exists ? r.sortOrder : '—'}</span>
+                    )}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td style={{ fontWeight: 600 }}>{PLATFORM_LABEL[r.platform] || r.platform}</td>
+                  <td>
+                    <input
+                      className="input mono"
+                      style={{ fontSize: 12, width: '100%' }}
+                      value={d.url}
+                      disabled={!canManage || busy === r.platform}
+                      placeholder={r.urlHint}
+                      onChange={(e) => setField(r.platform, 'url', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="input"
+                      style={{ width: '100%' }}
+                      value={d.label}
+                      disabled={!canManage || busy === r.platform}
+                      placeholder={PLATFORM_LABEL[r.platform]}
+                      onChange={(e) => setField(r.platform, 'label', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={r.isVisible}
+                        disabled={!canManage || !r.exists || busy === r.platform}
+                        onChange={(e) => setVisible(r, e.target.checked)}
+                      />
+                      <span className={`badge ${r.exists && r.isVisible ? 'success' : 'neutral'}`}>
+                        <span className="dot" />{!r.exists ? 'not set' : r.isVisible ? 'shown' : 'hidden'}
+                      </span>
+                    </label>
+                  </td>
+                  {canManage && (
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="btn btn-primary"
+                        style={{ padding: '3px 10px' }}
+                        disabled={busy === r.platform || (!dirty && r.exists) || (!r.exists && !d.url.trim())}
+                        onClick={() => savePlatform(r)}
+                      >
+                        {busy === r.platform ? '…' : r.exists ? (d.url.trim() ? 'Save' : 'Remove') : 'Add'}
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-      )}
-
-      {canManage && (
-        <form onSubmit={add} style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 14, borderTop: '1px solid #e6ebf3', paddingTop: 14 }}>
-          <div className="field" style={{ margin: 0 }}>
-            <label>Platform</label>
-            <select className="input" value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}>
-              {SOCIAL_PLATFORMS.map((p) => <option key={p} value={p}>{PLATFORM_LABEL[p]}</option>)}
-            </select>
-          </div>
-          <div className="field" style={{ margin: 0, flex: '1 1 260px' }}>
-            <label>URL <span className="req">*</span></label>
-            <input className="input mono" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://facebook.com/yourpage" required />
-          </div>
-          <div className="field" style={{ margin: 0 }}>
-            <label>Label</label>
-            <input className="input" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Facebook" />
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={adding}>{adding ? 'Adding…' : '+ Add channel'}</button>
-        </form>
       )}
     </div>
   );

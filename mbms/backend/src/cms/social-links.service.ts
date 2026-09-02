@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundAppException } from '../common/app-exception';
+import { ConflictAppException, NotFoundAppException } from '../common/app-exception';
 import { AuthenticatedUser } from '../common/strategies/jwt.strategy';
 import { AuditService } from '../common/audit/audit.service';
 import { ContentTranslationService } from '../common/translation/content-translation.service';
-import { CreateSocialLinkDto, UpdateSocialLinkDto, SOCIAL_PLATFORMS } from './dto/social-link.dto';
+import {
+  CreateSocialLinkDto,
+  UpdateSocialLinkDto,
+  UpsertPlatformLinkDto,
+  SOCIAL_PLATFORMS,
+} from './dto/social-link.dto';
 import { ApplySocialContentDto, UpdateSocialContentDto } from './dto/social-content.dto';
 
 // How each platform's public URL is built from a bare handle (no @, no URL).
@@ -71,7 +76,110 @@ export class SocialLinksService {
     return rows.map(linkResource);
   }
 
+  // The fixed roster: every supported platform, in canonical order, with its
+  // channel row merged in where one exists. This is what the CMS / Site
+  // Builder panel renders — "all social media channels" whether or not a row
+  // exists yet. `urlHint` is a ready-made URL from the shared handle (or a
+  // "yourhandle" placeholder) to prefill an empty row.
+  async listRoster() {
+    const rows = await this.prisma.socialLink.findMany();
+    const byPlatform = new Map(rows.map((r) => [r.platform, r]));
+    const content = await this.prisma.socialContent.findUnique({
+      where: { id: SOCIAL_CONTENT_ID },
+    });
+    const handle = content?.handle?.trim() || 'yourhandle';
+
+    return SOCIAL_PLATFORMS.map((platform, i) => {
+      const row = byPlatform.get(platform as any);
+      const builder = PLATFORM_URL[platform];
+      return {
+        platform,
+        exists: !!row,
+        id: row?.id ?? null,
+        url: row?.url ?? '',
+        label: row?.label ?? content?.displayName ?? null,
+        sortOrder: row?.sortOrder ?? i + 1,
+        isVisible: row ? row.isVisible : false,
+        urlHint: builder ? builder(handle) : 'https://…',
+        updatedAt: row?.updatedAt ?? null,
+      };
+    });
+  }
+
+  // Upsert (or delete) the single channel row for one platform. This is the
+  // roster's save action: a non-empty `url` creates or updates the row; an
+  // explicit empty-string `url` on a platform that has a row removes it.
+  async upsertPlatform(
+    user: AuthenticatedUser,
+    platform: string,
+    dto: UpsertPlatformLinkDto,
+  ) {
+    if (!(SOCIAL_PLATFORMS as readonly string[]).includes(platform)) {
+      throw new NotFoundAppException(`Unknown platform "${platform}".`);
+    }
+    const existing = await this.prisma.socialLink.findUnique({
+      where: { platform: platform as any },
+    });
+
+    const url = dto.url?.trim();
+
+    // Explicit clear → remove the row (if any).
+    if (dto.url !== undefined && url === '') {
+      if (!existing) return { platform, exists: false };
+      await this.prisma.socialLink.delete({ where: { id: existing.id } });
+      await this.audit(user, 'cms.social_link.deleted', existing.id, linkResource(existing), null);
+      return { platform, exists: false };
+    }
+
+    if (!existing) {
+      if (!url) {
+        throw new ConflictAppException('Enter a URL for this platform before saving it.');
+      }
+      const maxOrder =
+        (await this.prisma.socialLink.aggregate({ _max: { sortOrder: true } }))._max.sortOrder ?? 0;
+      const created = await this.prisma.socialLink.create({
+        data: {
+          platform: platform as any,
+          url,
+          label: dto.label?.trim() || null,
+          sortOrder: dto.sortOrder ?? maxOrder + 1,
+          isVisible: dto.isVisible ?? true,
+          createdBy: user.id,
+        },
+      });
+      await this.audit(user, 'cms.social_link.created', created.id, null, linkResource(created));
+      return linkResource(created);
+    }
+
+    const data: any = {};
+    if (url !== undefined) data.url = url;
+    if (dto.label !== undefined) data.label = dto.label?.trim() || null;
+    if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
+    if (dto.isVisible !== undefined) data.isVisible = dto.isVisible;
+
+    const updated = await this.prisma.socialLink.update({
+      where: { id: existing.id },
+      data,
+    });
+    await this.audit(
+      user,
+      'cms.social_link.updated',
+      existing.id,
+      linkResource(existing),
+      linkResource(updated),
+    );
+    return linkResource(updated);
+  }
+
   async create(user: AuthenticatedUser, dto: CreateSocialLinkDto) {
+    const clash = await this.prisma.socialLink.findUnique({
+      where: { platform: dto.platform },
+    });
+    if (clash) {
+      throw new ConflictAppException(
+        `The ${dto.platform} channel already exists — edit it in the platform roster.`,
+      );
+    }
     const created = await this.prisma.socialLink.create({
       data: {
         platform: dto.platform,

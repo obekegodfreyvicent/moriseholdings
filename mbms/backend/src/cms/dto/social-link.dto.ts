@@ -72,3 +72,28 @@ export class UpdateSocialLinkDto {
   @IsBoolean()
   isVisible?: boolean;
 }
+
+// One-row-per-platform roster upsert (2 September 2026) — the CMS / Site
+// Builder shows every supported platform as a fixed row; saving a row calls
+// PUT /cms/social-links/platform/:platform with this body. An empty-string
+// `url` on a platform that already has a row deletes that row.
+export class UpsertPlatformLinkDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  url?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  label?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isVisible?: boolean;
+}

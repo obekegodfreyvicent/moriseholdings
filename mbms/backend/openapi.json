@@ -4017,6 +4017,54 @@
         }
       }
     },
+    "/api/v1/cms/social-links/roster": {
+      "get": {
+        "operationId": "CmsController_listSocialRoster",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/cms/social-links/platform/{platform}": {
+      "put": {
+        "operationId": "CmsController_upsertSocialPlatform",
+        "parameters": [
+          {
+            "name": "platform",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertPlatformLinkDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cms/social-links/{id}": {
       "patch": {
         "operationId": "CmsController_updateSocial",
@@ -13238,6 +13286,26 @@
           "platform",
           "url"
         ]
+      },
+      "UpsertPlatformLinkDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "sortOrder": {
+            "type": "number",
+            "minimum": 0
+          },
+          "isVisible": {
+            "type": "boolean"
+          }
+        }
       },
       "UpdateSocialLinkDto": {
         "type": "object",

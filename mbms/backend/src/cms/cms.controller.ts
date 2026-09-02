@@ -21,7 +21,11 @@ import { FaqService } from './faq.service';
 import { NewsletterService } from './newsletter.service';
 import { DisclaimerService } from './disclaimer.service';
 import { CreateContentBlockDto, UpdateContentBlockDto } from './dto/cms.dto';
-import { CreateSocialLinkDto, UpdateSocialLinkDto } from './dto/social-link.dto';
+import {
+  CreateSocialLinkDto,
+  UpdateSocialLinkDto,
+  UpsertPlatformLinkDto,
+} from './dto/social-link.dto';
 import { ApplySocialContentDto, UpdateSocialContentDto } from './dto/social-content.dto';
 import { CreateFaqItemDto, UpdateFaqItemDto } from './dto/faq.dto';
 import { CreateDisclaimerItemDto, UpdateDisclaimerItemDto } from './dto/disclaimer.dto';
@@ -94,10 +98,30 @@ export class CmsController {
     return this.socialLinksService.list();
   }
 
+  // The fixed roster — every supported platform, whether or not a channel row
+  // exists yet. This is what the CMS / Site Builder panel renders so that
+  // "all social media channels" are managed from one place.
+  @Get('social-links/roster')
+  listSocialRoster() {
+    return this.socialLinksService.listRoster();
+  }
+
   @Post('social-links')
   @RequirePermission('cms.manage')
   createSocial(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateSocialLinkDto) {
     return this.socialLinksService.create(user, dto);
+  }
+
+  // Roster save: create / update / (on an explicit empty url) delete the one
+  // channel row for a platform.
+  @Put('social-links/platform/:platform')
+  @RequirePermission('cms.manage')
+  upsertSocialPlatform(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('platform') platform: string,
+    @Body() dto: UpsertPlatformLinkDto,
+  ) {
+    return this.socialLinksService.upsertPlatform(user, platform, dto);
   }
 
   @Patch('social-links/:id')
