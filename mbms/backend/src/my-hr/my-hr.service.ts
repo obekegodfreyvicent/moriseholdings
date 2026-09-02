@@ -189,9 +189,11 @@ export class MyHrService {
   async payslips(user: AuthenticatedUser) {
     const e = await this.needMe(user);
     const rows = await this.prisma.payslip.findMany({
-      where: { employeeId: e.id, payrollRun: { status: 'paid' } },
+      // A payslip becomes visible to its owner as soon as the run is approved —
+      // it then shows as "awaiting payment" until the run is actually paid.
+      where: { employeeId: e.id, payrollRun: { status: { in: ['approved', 'paid'] } } },
       include: {
-        payrollRun: { select: { periodYear: true, periodMonth: true, paidAt: true } },
+        payrollRun: { select: { periodYear: true, periodMonth: true, status: true, approvedAt: true, paidAt: true } },
         components: true,
       },
       orderBy: [{ payrollRun: { periodYear: 'desc' } }, { payrollRun: { periodMonth: 'desc' } }],
@@ -199,6 +201,8 @@ export class MyHrService {
     return rows.map((p) => ({
       id: p.id,
       periodLabel: `${MONTHS[(p as any).payrollRun.periodMonth]} ${(p as any).payrollRun.periodYear}`,
+      status: (p as any).payrollRun.status,
+      approvedAt: (p as any).payrollRun.approvedAt,
       paidAt: (p as any).payrollRun.paidAt,
       grossSalary: p.grossSalary.toString(),
       paye: p.paye.toString(),

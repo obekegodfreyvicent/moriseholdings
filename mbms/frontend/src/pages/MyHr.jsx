@@ -415,15 +415,21 @@ export function MyPayslipsPage() {
       ) : (
         <div className="card">
           {data.length === 0 ? (
-            <div className="empty">No payslips yet — a payslip appears here once a payroll run that includes you has been paid.</div>
+            <div className="empty">No payslips yet — a payslip appears here once a payroll run that includes you has been approved.</div>
           ) : (
             <table>
-              <thead><tr><th>Period</th><th>Paid</th><th style={{ textAlign: 'right' }}>Gross</th><th style={{ textAlign: 'right' }}>PAYE</th><th style={{ textAlign: 'right' }}>NSSF</th><th style={{ textAlign: 'right' }}>Net</th><th /></tr></thead>
+              <thead><tr><th>Period</th><th>Status</th><th style={{ textAlign: 'right' }}>Gross</th><th style={{ textAlign: 'right' }}>PAYE</th><th style={{ textAlign: 'right' }}>NSSF</th><th style={{ textAlign: 'right' }}>Net</th><th /></tr></thead>
               <tbody>
                 {data.map((p) => (
                   <tr key={p.id}>
                     <td>{p.periodLabel}</td>
-                    <td className="mono">{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : '—'}</td>
+                    <td>
+                      {p.status === 'paid' ? (
+                        <span className="badge success" title={p.paidAt ? `Paid ${new Date(p.paidAt).toLocaleDateString()}` : 'Paid'}>Paid{p.paidAt ? ` · ${new Date(p.paidAt).toLocaleDateString()}` : ''}</span>
+                      ) : (
+                        <span className="badge warning" title={p.approvedAt ? `Approved ${new Date(p.approvedAt).toLocaleDateString()}` : 'Approved'}>Approved · awaiting payment</span>
+                      )}
+                    </td>
                     <td style={{ textAlign: 'right' }}><Money value={p.grossSalary} /></td>
                     <td style={{ textAlign: 'right' }}><Money value={p.paye} /></td>
                     <td style={{ textAlign: 'right' }}><Money value={p.nssfEmployee} /></td>
@@ -438,6 +444,13 @@ export function MyPayslipsPage() {
             <div className="modal-backdrop" onClick={() => setOpen(null)}>
               <div className="modal" style={{ width: 420 }} onClick={(e) => e.stopPropagation()}>
                 <h2>Payslip — {open.periodLabel}</h2>
+                <p style={{ marginTop: 4 }}>
+                  {open.status === 'paid' ? (
+                    <span className="badge success">Paid{open.paidAt ? ` on ${new Date(open.paidAt).toLocaleDateString()}` : ''}</span>
+                  ) : (
+                    <span className="badge warning">Approved{open.approvedAt ? ` on ${new Date(open.approvedAt).toLocaleDateString()}` : ''} · awaiting payment</span>
+                  )}
+                </p>
                 <table style={{ marginTop: 8 }}>
                   <tbody>
                     <tr><td>Gross salary</td><td style={{ textAlign: 'right' }}><Money value={open.grossSalary} /></td></tr>

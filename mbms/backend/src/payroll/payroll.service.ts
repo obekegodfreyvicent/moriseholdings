@@ -263,6 +263,25 @@ export class PayrollService {
       include: { payslips: { orderBy: { employeeName: 'asc' }, include: { components: true } } },
     });
     await this.audit(user, 'payroll.run.approved', run.companyId, id, { status: 'draft' }, { status: 'approved' });
+
+    // Once the run is approved, its staff can already view their payslip in
+    // My HR › My Payslips (marked "awaiting payment"). Notify each one with a login.
+    const label = `${MONTHS[run.periodMonth]} ${run.periodYear}`;
+    const emps = await this.prisma.employee.findMany({
+      where: { id: { in: updated.payslips.map((p) => p.employeeId) }, userId: { not: null } },
+      select: { id: true, userId: true },
+    });
+    for (const e of emps) {
+      await this.notifications.notifyUsers([e.userId as string], {
+        companyId: run.companyId,
+        type: 'payroll.payslip_available',
+        title: `Your payslip for ${label} is ready to view.`,
+        message: 'The payroll run has been approved. You can view your payslip in My HR › My Payslips; it will be marked paid once payment is released.',
+        entityType: 'payroll_run',
+        entityId: id,
+      });
+    }
+
     return runResource(updated);
   }
 
@@ -355,7 +374,7 @@ export class PayrollService {
 
     await this.audit(user, 'payroll.run.paid', run.companyId, id, { status: 'approved' }, { status: 'paid', journalEntry: entryNumber, totalNet: net.toFixed(2) });
 
-    // Notify each employee with a login that their payslip is available.
+    // Notify each employee with a login that their pay has been released.
     const emps = await this.prisma.employee.findMany({
       where: { id: { in: run.payslips.map((p) => p.employeeId) }, userId: { not: null } },
       select: { id: true, userId: true },
@@ -364,7 +383,8 @@ export class PayrollService {
       await this.notifications.notifyUsers([e.userId as string], {
         companyId: run.companyId,
         type: 'payroll.payslip_available',
-        title: `Your payslip for ${label} is available.`,
+        title: `Your ${label} pay has been released.`,
+        message: 'Your payslip in My HR › My Payslips is now marked paid.',
         entityType: 'payroll_run',
         entityId: id,
       });
