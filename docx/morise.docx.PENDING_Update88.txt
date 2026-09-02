@@ -1,0 +1,29 @@
+morise.docx was open in LibreOffice during the "Social Media Channels Managed
+From One Shared Record" pass (2 September 2026), so this section was NOT applied
+automatically. Paste it in as a new Heading 1 section at the end of the document,
+following the last "Implementation Status Update N" entry, then delete this file.
+(In the docs 01–18 scheme this is "Implementation Status Update 88"; in the
+README's morise.docx cross-reference it is "Update 63". Use morise.docx's own
+running number — the next integer after the last "Implementation Status Update N"
+heading already in the file.)
+
+============================================================
+
+HEADING (Heading 1 style):
+Implementation Status Update <next N> (2 September 2026) — Social Media Channels Managed From One Shared Record
+
+BODY (Body Text style, one paragraph per block below):
+
+An administrator asked to manage the storefront's social media channels from the CMS / Site Builder section of the admin/backend so that a single edit — one handle, one display name, one tagline, one visibility setting — can be pushed to every social media channel at once, and so that adding, updating or deleting all channels is a single click rather than a per-channel chore.
+
+A new SocialContent table (migration 20260902150000_social_content) holds exactly one row: the shared content record — an account handle, a display name used as the link label on every channel, a tagline shown above the channel row in the storefront footer, and a shared visibility flag. It sits alongside the existing per-channel SocialLink table, which is unchanged, so a channel can still be added or edited individually as before.
+
+Four endpoints were added under the existing cms.manage / cms.viewAll permissions (no new permission): GET and PUT /api/v1/cms/social-content read and save the shared record; POST /api/v1/cms/social-content/apply pushes it onto every channel in one call — with { createMissing: true } it first creates a channel for every supported platform, building each URL from the shared handle, and with { overwriteUrls: true } it rebuilds every channel URL from that handle; DELETE /api/v1/cms/social-content/channels removes every channel at once. The CMS / Site Builder screen gains a "Shared content — one edit, all channels" panel with Save, "Apply to all channels", "Add & sync every platform" and "Clear all channels" buttons. The storefront footer now shows the shared tagline above the channel icons via a new public GET /api/v1/customer-portal/public/social-content.
+
+Verified end to end against the running system: saving the shared record then clicking "Add & sync every platform" created the eight buildable platform channels and set every label and visibility from the record; "Apply to all channels" with the URL-rebuild option on rewrote every channel URL from the handle; "Clear all channels" deleted them all and a re-apply with createMissing rebuilt them; the storefront footer read the shared tagline. Every mutation writes an audit event (cms.social_content.updated / applied / cleared). nest build, admin vite build and storefront vite build all clean; openapi.json regenerated (355 paths, 453 operations).
+
+HEADING (Heading 2 style):
+Impact on this document
+
+BODY (Body Text style):
+Company & Holdings Management — the storefront's public face for the holding company and every subsidiary now carries one consistent set of social media details: an administrator edits the shared record once in CMS / Site Builder and pushes it to every channel, adds a channel for every platform, or clears them all, each in a single click. Additive change — one single-row table, four endpoints on the existing CMS controller under existing permissions; the per-channel table, and every other module, is untouched.

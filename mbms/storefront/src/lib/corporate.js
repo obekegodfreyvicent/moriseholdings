@@ -152,6 +152,27 @@ export function useSocialLinks() {
   return links;
 }
 
+// Shared social content (2 September 2026) — the one display name + tagline
+// Admin » CMS / Site Builder pushes to every channel. The footer shows the
+// tagline above the channel row. Empty object when nothing is set / hidden.
+export function useSocialContent() {
+  const [content, setContent] = useState({});
+
+  useEffect(() => {
+    let alive = true;
+    apiRequest('/customer-portal/public/social-content')
+      .then((d) => alive && d && typeof d === 'object' && setContent(d))
+      .catch(() => {
+        /* footer just omits the tagline */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return content;
+}
+
 // Landing-page FAQ (29 August 2026) — added in Admin » CMS / Site Builder,
 // shown in the landing page's FAQ section. Public, no token; visible items
 // only, in the admin-set order.

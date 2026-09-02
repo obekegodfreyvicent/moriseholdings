@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 import { useCart } from '../lib/cart';
 import { useT } from '../lib/i18n';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import { useSocialLinks, socialIcon, socialLabel } from '../lib/corporate';
+import { useSocialLinks, useSocialContent, socialIcon, socialLabel } from '../lib/corporate';
 import Logo from './Logo';
 
 const NAV = [
@@ -26,6 +26,7 @@ export function Layout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const social = useSocialLinks();
+  const socialContent = useSocialContent();
 
   function onSearch(e) {
     e.preventDefault();
@@ -103,6 +104,7 @@ export function Layout({ children }) {
           {social.length > 0 && (
             <div className="sf-social">
               <span className="sf-social-label">{t('corp.footer.followUs')}</span>
+              {socialContent.tagline && <span className="sf-social-tagline">{socialContent.tagline}</span>}
               {social.map((l) => (
                 <a
                   key={l.url}

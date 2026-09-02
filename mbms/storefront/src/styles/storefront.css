@@ -345,6 +345,11 @@ a {
   text-transform: uppercase;
   color: var(--sf-text-muted);
 }
+.sf-social-tagline {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--sf-text-muted);
+}
 .sf-social-link {
   display: inline-grid;
   place-items: center;

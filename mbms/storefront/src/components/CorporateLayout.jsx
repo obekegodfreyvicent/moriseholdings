@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useT } from '../lib/i18n';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import { useSocialLinks, socialIcon, socialLabel, useDisclaimer } from '../lib/corporate';
+import { useSocialLinks, useSocialContent, socialIcon, socialLabel, useDisclaimer } from '../lib/corporate';
 import Logo from './Logo';
 
 // Shared chrome for the pre-login corporate site (29 August 2026): the
@@ -22,6 +22,7 @@ const NAV = [
 export function CorporateLayout({ active, children }) {
   const t = useT();
   const social = useSocialLinks();
+  const socialContent = useSocialContent();
   const { items: disclaimerItems } = useDisclaimer();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
@@ -88,6 +89,7 @@ export function CorporateLayout({ active, children }) {
         {social.length > 0 && (
           <div className="mc-wrap mc-social">
             <span className="mc-social-label">{t('corp.footer.followUs')}</span>
+            {socialContent.tagline && <span className="mc-social-tagline">{socialContent.tagline}</span>}
             {social.map((l) => (
               <a
                 key={l.url}

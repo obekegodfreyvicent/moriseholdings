@@ -3012,6 +3012,22 @@ async function main() {
     });
   }
 
+  // Shared social media content (2 September 2026) — the one canonical
+  // record Admin » CMS / Site Builder pushes to every channel in a single
+  // click. Singleton, id "default".
+  await prisma.socialContent.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      handle: 'moriseholdings',
+      displayName: 'Morise Holdings',
+      tagline: 'Follow Morise Holdings for group news, product launches and updates.',
+      isVisible: true,
+      updatedBy: mathias.id,
+    },
+  });
+
   // Landing-page FAQ (29 August 2026) — managed in Admin » CMS / Site
   // Builder, shown in the FAQ section of the corporate landing page. Fixed
   // ids so a re-seed is idempotent.

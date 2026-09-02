@@ -118,6 +118,14 @@ function SocialLinksPanel({ canManage }) {
   const [form, setForm] = useState({ platform: 'facebook', url: '', label: '' });
   const [adding, setAdding] = useState(false);
 
+  // Shared social content (2 September 2026) — one canonical record pushed to
+  // every channel in a single click, so all channels carry the same info.
+  const [content, setContent] = useState(null);
+  const [cForm, setCForm] = useState({ handle: '', displayName: '', tagline: '', isVisible: true });
+  const [overwriteUrls, setOverwriteUrls] = useState(false);
+  const [cBusy, setCBusy] = useState(false);
+  const [cMsg, setCMsg] = useState(null);
+
   async function load() {
     setError(null);
     try {
@@ -128,7 +136,74 @@ function SocialLinksPanel({ canManage }) {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  async function loadContent() {
+    try {
+      const c = await apiRequest('/cms/social-content');
+      setContent(c);
+      setCForm({
+        handle: c.handle || '',
+        displayName: c.displayName || '',
+        tagline: c.tagline || '',
+        isVisible: c.isVisible !== false,
+      });
+    } catch {
+      setContent({ handle: null, displayName: null, tagline: null, isVisible: true });
+    }
+  }
+
+  useEffect(() => { load(); loadContent(); }, []);
+
+  async function saveContent(e) {
+    e.preventDefault();
+    setCBusy(true); setError(null); setCMsg(null);
+    try {
+      await apiRequest('/cms/social-content', {
+        method: 'PUT',
+        body: {
+          handle: cForm.handle.trim() || null,
+          displayName: cForm.displayName.trim() || null,
+          tagline: cForm.tagline.trim() || null,
+          isVisible: cForm.isVisible,
+        },
+      });
+      setCMsg('Shared content saved. Use a button below to push it to the channels.');
+      await loadContent();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.apiError.message : 'Save failed.');
+    } finally { setCBusy(false); }
+  }
+
+  // One-click: push the shared content onto every channel. `createMissing`
+  // also adds a channel for every supported platform first.
+  async function applyToAll(createMissing) {
+    if (createMissing && !cForm.handle.trim()) {
+      setError('Set a handle first — new channels build their URL from it.');
+      return;
+    }
+    setCBusy(true); setError(null); setCMsg(null);
+    try {
+      const r = await apiRequest('/cms/social-content/apply', {
+        method: 'POST',
+        body: { createMissing: !!createMissing, overwriteUrls },
+      });
+      setCMsg(`Done — ${r.created} channel(s) added, ${r.updated} updated with the shared content.`);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.apiError.message : 'Apply failed.');
+    } finally { setCBusy(false); }
+  }
+
+  async function clearAll() {
+    if (!window.confirm('Delete every social channel? They will all disappear from the storefront. The shared content record is kept.')) return;
+    setCBusy(true); setError(null); setCMsg(null);
+    try {
+      const r = await apiRequest('/cms/social-content/channels', { method: 'DELETE' });
+      setCMsg(`Deleted ${r.deleted} channel(s).`);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.apiError.message : 'Clear failed.');
+    } finally { setCBusy(false); }
+  }
 
   async function add(e) {
     e.preventDefault();
@@ -184,6 +259,61 @@ function SocialLinksPanel({ canManage }) {
       </div>
 
       {error && <div className="banner error" style={{ marginTop: 10 }}>{error}</div>}
+      {cMsg && <div className="banner info" style={{ marginTop: 10 }}>{cMsg}</div>}
+
+      {/* Shared content — one edit, applied to every channel in a single click */}
+      <div style={{ marginTop: 12, padding: 14, border: '1px solid #e6ebf3', borderRadius: 8, background: '#f8fafc' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+          <h3 style={{ margin: 0, fontSize: 14 }}>Shared content — one edit, all channels</h3>
+          <span style={{ fontSize: 12, color: '#7c8aa3' }}>
+            {content && content.updatedAt ? `Last saved ${new Date(content.updatedAt).toLocaleString()}` : 'Not saved yet'}
+          </span>
+        </div>
+        <p style={{ fontSize: 12, color: '#5b6a85', margin: '6px 0 12px' }}>
+          One canonical handle, label and tagline. The buttons below push it to every social channel at once —
+          so every channel shows the same information.
+        </p>
+
+        <form onSubmit={saveContent} style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+          <div className="field" style={{ margin: 0 }}>
+            <label>Handle</label>
+            <input className="input mono" value={cForm.handle} disabled={!canManage}
+              onChange={(e) => setCForm({ ...cForm, handle: e.target.value })} placeholder="moriseholdings" />
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <label>Display name (label for every channel)</label>
+            <input className="input" value={cForm.displayName} disabled={!canManage}
+              onChange={(e) => setCForm({ ...cForm, displayName: e.target.value })} placeholder="Morise Holdings" />
+          </div>
+          <div className="field" style={{ margin: 0, gridColumn: '1 / -1' }}>
+            <label>Tagline (shown above the channel row in the footer)</label>
+            <input className="input" value={cForm.tagline} disabled={!canManage}
+              onChange={(e) => setCForm({ ...cForm, tagline: e.target.value })} placeholder="Follow us for group news and updates." />
+          </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <input type="checkbox" checked={cForm.isVisible} disabled={!canManage}
+              onChange={(e) => setCForm({ ...cForm, isVisible: e.target.checked })} />
+            Channels visible after apply
+          </label>
+          {canManage && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <button type="submit" className="btn btn-secondary" disabled={cBusy}>{cBusy ? 'Working…' : 'Save shared content'}</button>
+            </div>
+          )}
+        </form>
+
+        {canManage && (
+          <div style={{ marginTop: 12, borderTop: '1px solid #e6ebf3', paddingTop: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" disabled={cBusy} onClick={() => applyToAll(false)}>Apply to all channels</button>
+            <button className="btn btn-primary" disabled={cBusy} onClick={() => applyToAll(true)}>Add &amp; sync every platform</button>
+            <button className="btn btn-secondary" disabled={cBusy} onClick={clearAll}>Clear all channels</button>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5b6a85' }}>
+              <input type="checkbox" checked={overwriteUrls} onChange={(e) => setOverwriteUrls(e.target.checked)} />
+              also rebuild URLs from the handle
+            </label>
+          </div>
+        )}
+      </div>
 
       {links === null ? (
         <div className="loading">Loading…</div>

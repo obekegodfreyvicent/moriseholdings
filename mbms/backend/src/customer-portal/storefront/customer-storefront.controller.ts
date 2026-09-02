@@ -72,6 +72,13 @@ export class CustomerPublicController {
     return this.socialLinksService.listPublic(this.translation.resolveLang(acceptLanguage));
   }
 
+  // The shared social content (display name + tagline) the footer shows
+  // above the channel row — only when the shared record is marked visible.
+  @Get('social-content')
+  socialContent(@Headers('accept-language') acceptLanguage?: string) {
+    return this.socialLinksService.getPublicContent(this.translation.resolveLang(acceptLanguage));
+  }
+
   // Landing-page FAQ — visible items only, in the admin-set order.
   @Get('faqs')
   faqs(@Headers('accept-language') acceptLanguage?: string) {

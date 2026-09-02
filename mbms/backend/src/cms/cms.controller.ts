@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -21,6 +22,7 @@ import { NewsletterService } from './newsletter.service';
 import { DisclaimerService } from './disclaimer.service';
 import { CreateContentBlockDto, UpdateContentBlockDto } from './dto/cms.dto';
 import { CreateSocialLinkDto, UpdateSocialLinkDto } from './dto/social-link.dto';
+import { ApplySocialContentDto, UpdateSocialContentDto } from './dto/social-content.dto';
 import { CreateFaqItemDto, UpdateFaqItemDto } from './dto/faq.dto';
 import { CreateDisclaimerItemDto, UpdateDisclaimerItemDto } from './dto/disclaimer.dto';
 
@@ -112,6 +114,46 @@ export class CmsController {
   @RequirePermission('cms.manage')
   removeSocial(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.socialLinksService.remove(user, id);
+  }
+
+  // ---- Shared social content (2 September 2026) ----
+  // One canonical record (handle / display name / tagline / visibility). The
+  // three actions below each apply it to *every* social channel in a single
+  // click, so all channels carry the same information. Reads: cms.viewAll or
+  // cms.manage (controller-level); writes: cms.manage.
+
+  @Get('social-content')
+  getSocialContent() {
+    return this.socialLinksService.getContent();
+  }
+
+  @Put('social-content')
+  @RequirePermission('cms.manage')
+  saveSocialContent(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateSocialContentDto,
+  ) {
+    return this.socialLinksService.saveContent(user, dto);
+  }
+
+  // Single click: push the shared content onto every channel. With
+  // { createMissing: true } it also adds a channel for every supported
+  // platform first; with { overwriteUrls: true } it rebuilds each URL from
+  // the shared handle.
+  @Post('social-content/apply')
+  @RequirePermission('cms.manage')
+  applySocialContent(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ApplySocialContentDto,
+  ) {
+    return this.socialLinksService.applyContentToAll(user, dto);
+  }
+
+  // Single click: delete every social channel.
+  @Delete('social-content/channels')
+  @RequirePermission('cms.manage')
+  clearSocialChannels(@CurrentUser() user: AuthenticatedUser) {
+    return this.socialLinksService.clearAllChannels(user);
   }
 
   // ---- Landing-page FAQ (29 August 2026) ----

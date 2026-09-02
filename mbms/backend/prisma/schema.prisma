@@ -2809,6 +2809,24 @@ model SocialLink {
   @@map("social_links")
 }
 
+// Shared social media content (2 September 2026) — one canonical set of
+// details (handle, display name, tagline, shared visibility) that Admin »
+// CMS / Site Builder pushes to every SocialLink row in a single click, so
+// every channel carries the same information. Singleton: always exactly one
+// row, id = "default". Site-wide, same scope model as SocialLink.
+model SocialContent {
+  id          String   @id @default("default")
+  handle      String?  @db.VarChar(120)
+  displayName String?  @map("display_name") @db.VarChar(120)
+  tagline     String?  @db.VarChar(300)
+  isVisible   Boolean  @default(true) @map("is_visible")
+  updatedBy   String?  @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("social_content")
+}
+
 // Landing-page FAQ (29 August 2026) — managed in Admin » CMS / Site Builder,
 // shown in the FAQ section of the corporate landing page. Site-wide.
 

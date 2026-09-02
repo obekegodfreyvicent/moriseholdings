@@ -4065,6 +4065,68 @@
         }
       }
     },
+    "/api/v1/cms/social-content": {
+      "get": {
+        "operationId": "CmsController_getSocialContent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "put": {
+        "operationId": "CmsController_saveSocialContent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSocialContentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/cms/social-content/apply": {
+      "post": {
+        "operationId": "CmsController_applySocialContent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplySocialContentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/cms/social-content/channels": {
+      "delete": {
+        "operationId": "CmsController_clearSocialChannels",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/cms/faqs": {
       "get": {
         "operationId": "CmsController_listFaqs",
@@ -11344,6 +11406,26 @@
         }
       }
     },
+    "/api/v1/customer-portal/public/social-content": {
+      "get": {
+        "operationId": "CustomerPublicController_socialContent",
+        "parameters": [
+          {
+            "name": "accept-language",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/customer-portal/public/faqs": {
       "get": {
         "operationId": "CustomerPublicController_faqs",
@@ -13187,6 +13269,40 @@
             "minimum": 0
           },
           "isVisible": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateSocialContentDto": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120
+          },
+          "tagline": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 300
+          },
+          "isVisible": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApplySocialContentDto": {
+        "type": "object",
+        "properties": {
+          "createMissing": {
+            "type": "boolean"
+          },
+          "overwriteUrls": {
             "type": "boolean"
           }
         }
