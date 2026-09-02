@@ -300,7 +300,20 @@ function NotificationBell() {
       {open && (
         <div
           className="card"
-          style={{ position: 'absolute', right: 0, top: '110%', width: 340, maxHeight: 420, overflowY: 'auto', zIndex: 50 }}
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: '110%',
+            width: 340,
+            maxHeight: 420,
+            overflowY: 'auto',
+            zIndex: 50,
+            // The bell lives in the navy .topbar (color: #fff); without an
+            // explicit colour the dropdown text renders white-on-white.
+            color: 'var(--text)',
+            background: '#fff',
+            textAlign: 'left',
+          }}
         >
           <div className="card-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Notifications</span>
@@ -331,12 +344,12 @@ function NotificationBell() {
                     {n.title}
                   </div>
                   {n.message && <div style={{ opacity: 0.75, marginTop: 2 }}>{n.message}</div>}
-                  <div style={{ opacity: 0.5, fontSize: 11, marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span>{n.createdAt?.slice(0, 16).replace('T', ' ')}</span>
+                  <div style={{ fontSize: 11, marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ opacity: 0.5 }}>{n.createdAt?.slice(0, 16).replace('T', ' ')}</span>
                     {n.department && (
                       <span
-                        className="badge"
-                        style={{ fontSize: 10, padding: '1px 6px', opacity: 0.9 }}
+                        className="badge neutral"
+                        style={{ fontSize: 9, padding: '1px 7px' }}
                         title="Routed to your department"
                       >
                         {n.department}

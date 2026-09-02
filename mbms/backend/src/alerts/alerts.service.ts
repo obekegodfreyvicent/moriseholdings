@@ -39,15 +39,15 @@ interface Alert {
 // the varied naming across subsidiaries ("Finance", "Finance & Administration",
 // "Finance & Billing"). First matching department wins; no match => null.
 const DEPT_KEYWORDS: Record<string, string[]> = {
-  'invoice.overdue': ['financ', 'billing', 'account', 'revenue', 'credit control'],
+  'invoice.overdue': ['financ', 'billing', 'account', 'revenue', 'credit control', 'client service', 'sales'],
   'supplier_invoice.overdue': ['financ', 'billing', 'account', 'payable', 'procure'],
-  'contract.expiring': ['procure', 'purchas', 'supply', 'vendor', 'freight', 'client service', 'client & lender'],
-  'vehicle.renewal': ['fleet', 'logistic', 'transport', 'distribution', 'yard', 'dock'],
-  'vehicle.service_due': ['fleet', 'logistic', 'transport', 'distribution', 'yard', 'dock'],
+  'contract.expiring': ['procure', 'purchas', 'supply', 'vendor', 'freight', 'client service', 'client & lender', 'legal', 'admin'],
+  'vehicle.renewal': ['fleet', 'logistic', 'transport', 'distribution', 'yard', 'dock', 'field', 'operations'],
+  'vehicle.service_due': ['fleet', 'logistic', 'transport', 'distribution', 'yard', 'dock', 'field', 'operations'],
   'asset.insurance_expiring': ['admin', 'financ', 'facilit', 'asset', 'compliance', 'security'],
-  'asset.inspection_due': ['inspection', 'audit', 'compliance', 'admin', 'operations', 'facilit'],
-  'stock.below_minimum': ['warehouse', 'inventory', 'stock', 'distribution', 'fulfil', 'putaway', 'receiving', 'collateral control'],
-  'batch.expiring': ['warehouse', 'inventory', 'stock', 'distribution', 'fulfil'],
+  'asset.inspection_due': ['inspection', 'audit', 'compliance', 'admin', 'operations', 'facilit', 'field'],
+  'stock.below_minimum': ['warehouse', 'inventory', 'stock', 'distribution', 'fulfil', 'putaway', 'receiving', 'collateral control', 'field'],
+  'batch.expiring': ['warehouse', 'inventory', 'stock', 'distribution', 'fulfil', 'field'],
   'project.deadline': ['project', 'operations', 'field'],
 };
 
@@ -434,9 +434,11 @@ export class AlertsService {
     return out;
   }
 
-  // First department in `companyId` whose name contains a keyword for this
-  // alert category (or, for a pending-approval queue, its entityType). Null
-  // when nothing matches — the alert is then treated as company-wide.
+  // The department in `companyId` that owns this alert category (or, for a
+  // pending-approval queue, its entityType). Keywords are tried in priority
+  // order — the most specific owner first ("warehouse" before the catch-all
+  // "field") — and the first keyword that matches a department name wins.
+  // Null when nothing matches: the alert is then treated as company-wide.
   private routeDepartment(
     companyId: string,
     category: string,
@@ -447,11 +449,11 @@ export class AlertsService {
     if (!depts || depts.length === 0) return null;
     const keys = category === 'approval.pending' ? APPROVAL_KEYWORDS[entityType] : DEPT_KEYWORDS[category];
     if (!keys || keys.length === 0) return null;
-    const hit = depts.find((d) => {
-      const name = d.name.toLowerCase();
-      return keys.some((k) => name.includes(k));
-    });
-    return hit?.id ?? null;
+    for (const k of keys) {
+      const hit = depts.find((d) => d.name.toLowerCase().includes(k));
+      if (hit) return hit.id;
+    }
+    return null;
   }
 
   // Resolve the caller's own department: their linked Employee record first
