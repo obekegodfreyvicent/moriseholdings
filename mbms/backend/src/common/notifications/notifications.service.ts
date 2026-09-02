@@ -97,7 +97,23 @@ export class NotificationsService {
       this.prisma.notification.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * pageSize, take: pageSize }),
       this.prisma.notification.count({ where }),
     ]);
-    return { items: rows.map(toResource), page, pageSize, total };
+    // Resolve department names for the page in one query so the bell can show
+    // which department an alert notification was routed to.
+    const deptIds = [...new Set(rows.map((r) => r.departmentId).filter((d): d is string => !!d))];
+    const deptNames = deptIds.length
+      ? new Map(
+          (await this.prisma.department.findMany({ where: { id: { in: deptIds } }, select: { id: true, name: true } })).map((d) => [
+            d.id,
+            d.name,
+          ]),
+        )
+      : new Map<string, string>();
+    return {
+      items: rows.map((r) => ({ ...toResource(r), department: r.departmentId ? deptNames.get(r.departmentId) ?? null : null })),
+      page,
+      pageSize,
+      total,
+    };
   }
 
   async unreadCount(userId: string): Promise<number> {
@@ -131,6 +147,7 @@ function toResource(n: any) {
     message: n.message,
     entityType: n.entityType,
     entityId: n.entityId,
+    departmentId: n.departmentId ?? null,
     isRead: n.isRead,
     readAt: n.readAt,
     createdAt: n.createdAt,

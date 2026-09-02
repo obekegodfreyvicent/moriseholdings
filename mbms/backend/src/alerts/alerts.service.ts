@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../common/strategies/jwt.strategy';
 import { hasGroupVisibility } from '../common/scope.util';
@@ -18,6 +18,14 @@ interface Alert {
   category: string;
   severity: Severity;
   companyId: string | null;
+  // Department responsible for acting on this alert (2 September 2026). Set by
+  // routeDepartments() after every source has been collected: a real column
+  // where the source row carries one (projects), otherwise a keyword match of
+  // the owning function against the company's department names. Null = no
+  // department dimension — every admin staff in company scope sees it.
+  // Optional only at push time; routeDepartments() sets it on every alert
+  // before collect() returns.
+  departmentId?: string | null;
   title: string;
   detail: string;
   entityType: string;
@@ -25,6 +33,32 @@ interface Alert {
   date: Date | null;
   amount: string | null;
 }
+
+// Which department name owns each alert category — matched case-insensitively
+// as a substring against the company's own department names, so it survives
+// the varied naming across subsidiaries ("Finance", "Finance & Administration",
+// "Finance & Billing"). First matching department wins; no match => null.
+const DEPT_KEYWORDS: Record<string, string[]> = {
+  'invoice.overdue': ['financ', 'billing', 'account', 'revenue', 'credit control'],
+  'supplier_invoice.overdue': ['financ', 'billing', 'account', 'payable', 'procure'],
+  'contract.expiring': ['procure', 'purchas', 'supply', 'vendor', 'freight', 'client service', 'client & lender'],
+  'vehicle.renewal': ['fleet', 'logistic', 'transport', 'distribution', 'yard', 'dock'],
+  'vehicle.service_due': ['fleet', 'logistic', 'transport', 'distribution', 'yard', 'dock'],
+  'asset.insurance_expiring': ['admin', 'financ', 'facilit', 'asset', 'compliance', 'security'],
+  'asset.inspection_due': ['inspection', 'audit', 'compliance', 'admin', 'operations', 'facilit'],
+  'stock.below_minimum': ['warehouse', 'inventory', 'stock', 'distribution', 'fulfil', 'putaway', 'receiving', 'collateral control'],
+  'batch.expiring': ['warehouse', 'inventory', 'stock', 'distribution', 'fulfil'],
+  'project.deadline': ['project', 'operations', 'field'],
+};
+
+// approval.pending alerts carry the queue name in entityType, not the category.
+const APPROVAL_KEYWORDS: Record<string, string[]> = {
+  'expense.manager': ['financ', 'account', 'admin'],
+  'expense.finance': ['financ', 'account'],
+  supplier_invoice: ['financ', 'procure', 'billing', 'account', 'payable'],
+  'asset.disposal': ['financ', 'admin', 'asset'],
+  leave: ['human resource', 'hr', 'people', 'workforce', 'rostering', 'personnel'],
+};
 
 function startOfToday() {
   const d = new Date();
@@ -34,6 +68,13 @@ function startOfToday() {
 
 @Injectable()
 export class AlertsService {
+  private readonly logger = new Logger('AlertsService');
+  // Per-user throttle for syncToNotifications(): the bell polls the unread
+  // count every 20s, but re-deriving the whole feed that often (per user) is
+  // wasteful — one reconcile every two minutes is plenty for a POC.
+  private readonly lastSync = new Map<string, number>();
+  private static readonly SYNC_INTERVAL_MS = 120_000;
+
   constructor(private readonly prisma: PrismaService) {}
 
   private scope(user: AuthenticatedUser): { in: string[] } | null {
@@ -72,6 +113,19 @@ export class AlertsService {
       select: { id: true, companyId: true, assetNumber: true, name: true },
     });
     const aById = new Map(assets.map((a) => [a.id, a]));
+
+    // Department directory for the scoped companies — used to route each
+    // alert to the department responsible for acting on it (see below).
+    const departments = await this.prisma.department.findMany({
+      where: { companyId: { in: scopedCompanies } },
+      select: { id: true, companyId: true, name: true },
+    });
+    const deptByCompany = new Map<string, { id: string; name: string }[]>();
+    for (const d of departments) {
+      const list = deptByCompany.get(d.companyId) ?? [];
+      list.push({ id: d.id, name: d.name });
+      deptByCompany.set(d.companyId, list);
+    }
 
     // ---- 1. AR invoices overdue ----
     const arOverdue = await this.prisma.invoice.findMany({
@@ -353,6 +407,23 @@ export class AlertsService {
       });
     }
 
+    // ---- department routing (2 September 2026) ----
+    // Tag every alert with the department that owns it: a real column where the
+    // source row has one (projects), otherwise a keyword match of the owning
+    // function against the company's department names. This is what lets the
+    // admin bell show each staff member only their own department's alerts.
+    const projDeptById = new Map(projects.map((p) => [p.id, p.departmentId] as const));
+    for (const a of out) {
+      let deptId: string | null = null;
+      if (a.category === 'project.deadline' && a.entityId) {
+        deptId = projDeptById.get(a.entityId) ?? null;
+      }
+      if (!deptId && a.companyId) {
+        deptId = this.routeDepartment(a.companyId, a.category, a.entityType, deptByCompany);
+      }
+      a.departmentId = deptId;
+    }
+
     out.sort((x, y) => {
       const s = SEV_RANK[x.severity] - SEV_RANK[y.severity];
       if (s !== 0) return s;
@@ -361,6 +432,98 @@ export class AlertsService {
       return dx - dy;
     });
     return out;
+  }
+
+  // First department in `companyId` whose name contains a keyword for this
+  // alert category (or, for a pending-approval queue, its entityType). Null
+  // when nothing matches — the alert is then treated as company-wide.
+  private routeDepartment(
+    companyId: string,
+    category: string,
+    entityType: string,
+    deptByCompany: Map<string, { id: string; name: string }[]>,
+  ): string | null {
+    const depts = deptByCompany.get(companyId);
+    if (!depts || depts.length === 0) return null;
+    const keys = category === 'approval.pending' ? APPROVAL_KEYWORDS[entityType] : DEPT_KEYWORDS[category];
+    if (!keys || keys.length === 0) return null;
+    const hit = depts.find((d) => {
+      const name = d.name.toLowerCase();
+      return keys.some((k) => name.includes(k));
+    });
+    return hit?.id ?? null;
+  }
+
+  // Resolve the caller's own department: their linked Employee record first
+  // (that is what "admin staff" means here), then a department-scoped
+  // UserScope row as a fallback. Null => no department => sees every alert in
+  // company scope (same as before this change).
+  private async resolveUserDepartment(user: AuthenticatedUser): Promise<string | null> {
+    const emp = await this.prisma.employee.findUnique({
+      where: { userId: user.id },
+      select: { departmentId: true },
+    });
+    if (emp?.departmentId) return emp.departmentId;
+    const scope = await this.prisma.userScope.findFirst({
+      where: { userId: user.id, departmentId: { not: null } },
+      select: { departmentId: true },
+    });
+    return scope?.departmentId ?? null;
+  }
+
+  // Mirror the caller's live alert feed onto their bell as Notification rows,
+  // filtered to their department. Reconciles: creates a row for each alert
+  // that has none yet, deletes rows whose underlying alert has cleared.
+  // Best-effort and throttled — a failure here must never break the feed.
+  async syncToNotifications(user: AuthenticatedUser): Promise<void> {
+    const last = this.lastSync.get(user.id) ?? 0;
+    if (Date.now() - last < AlertsService.SYNC_INTERVAL_MS) return;
+    this.lastSync.set(user.id, Date.now());
+
+    try {
+      const groupWide = hasGroupVisibility(user, 'organization.company.viewAll');
+      const myDeptId = await this.resolveUserDepartment(user);
+
+      let alerts = await this.collect(user, 30);
+      // A staff member with a department sees their department's alerts plus
+      // company-wide ones. A group-visibility user, or one with no department,
+      // sees everything already in their company scope.
+      if (!groupWide && myDeptId) {
+        alerts = alerts.filter((a) => !a.departmentId || a.departmentId === myDeptId);
+      }
+
+      const desired = new Map(alerts.map((a) => [a.id, a]));
+      const existing = await this.prisma.notification.findMany({
+        where: { userId: user.id, type: { startsWith: 'alert:' } },
+        select: { id: true, entityId: true },
+      });
+      const existingKeys = new Set(existing.map((e) => e.entityId));
+
+      const staleIds = existing.filter((e) => !desired.has(e.entityId as string)).map((e) => e.id);
+      if (staleIds.length) {
+        await this.prisma.notification.deleteMany({ where: { id: { in: staleIds } } });
+      }
+
+      const toCreate = alerts.filter((a) => !existingKeys.has(a.id));
+      if (toCreate.length) {
+        await this.prisma.notification.createMany({
+          data: toCreate.map((a) => ({
+            userId: user.id,
+            companyId: a.companyId,
+            departmentId: a.departmentId ?? null,
+            type: `alert:${a.category}`,
+            title: a.title,
+            message: a.detail,
+            entityType: a.entityType,
+            entityId: a.id, // the stable alert key, not a table row id
+            isRead: false,
+          })),
+        });
+      }
+    } catch (err) {
+      this.lastSync.delete(user.id); // let the next poll retry
+      this.logger.error('Failed to sync alerts to notifications', err as Error);
+    }
   }
 
   async list(user: AuthenticatedUser, opts: { days?: number; category?: string; severity?: string }) {

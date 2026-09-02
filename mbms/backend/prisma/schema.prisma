@@ -2332,6 +2332,11 @@ model Notification {
   message    String?
   entityType String?   @map("entity_type")
   entityId   String?   @map("entity_id")
+  // Department the notification is routed to (2 September 2026): set when an
+  // Alerts-feed item is mirrored onto a recipient's bell so admin staff see
+  // alerts owned by their own department. Null = the item is company-wide
+  // (or was pushed by a workflow that has no department dimension).
+  departmentId String? @map("department_id") // logical ref -> departments.id
   isRead     Boolean   @default(false) @map("is_read")
   readAt     DateTime? @map("read_at")
   createdAt  DateTime  @default(now()) @map("created_at")
@@ -2340,6 +2345,7 @@ model Notification {
 
   @@index([userId])
   @@index([userId, isRead])
+  @@index([userId, departmentId])
   @@map("notifications")
 }
 

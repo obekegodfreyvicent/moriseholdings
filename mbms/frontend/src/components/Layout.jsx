@@ -326,9 +326,23 @@ function NotificationBell() {
                     fontSize: 13,
                   }}
                 >
-                  <div style={{ fontWeight: n.isRead ? 400 : 700 }}>{n.title}</div>
+                  <div style={{ fontWeight: n.isRead ? 400 : 700 }}>
+                    {n.type?.startsWith('alert:') && <span title="From the Alerts feed">{'⚠️ '}</span>}
+                    {n.title}
+                  </div>
                   {n.message && <div style={{ opacity: 0.75, marginTop: 2 }}>{n.message}</div>}
-                  <div style={{ opacity: 0.5, fontSize: 11, marginTop: 4 }}>{n.createdAt?.slice(0, 16).replace('T', ' ')}</div>
+                  <div style={{ opacity: 0.5, fontSize: 11, marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span>{n.createdAt?.slice(0, 16).replace('T', ' ')}</span>
+                    {n.department && (
+                      <span
+                        className="badge"
+                        style={{ fontSize: 10, padding: '1px 6px', opacity: 0.9 }}
+                        title="Routed to your department"
+                      >
+                        {n.department}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))
             )}
