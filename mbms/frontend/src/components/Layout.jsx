@@ -27,6 +27,7 @@ const NAV_GROUPS = [
       { to: '/support-tickets', icon: '\u{1F3AB}', label: 'Support Tickets' },
       { to: '/marketing', icon: '\u{1F4E3}', label: 'Marketing & Promos' },
       { to: '/cms', icon: '\u{1F9F1}', label: 'CMS / Site Builder' },
+      { to: '/social', icon: '\u{1F4E1}', label: 'Social Publishing' },
       { to: '/users', icon: '\u{1F465}', label: 'Users & Settings' },
       { to: '/audit', icon: '\u{1F50E}', label: 'Activity Log' },
     ],

@@ -1,0 +1,30 @@
+"01_Project Proposal - Morise Holdings Limited.docx" was open in LibreOffice
+during the "Social Media Publishing (New Doc 24)" pass (3 September 2026), so
+this section was NOT applied automatically. Every other doc 02-18 received it
+as "Implementation Status Update 97".
+
+Numbered heading: the next integer after the last "NN. Implementation Status
+Update N" heading in the file (it is "109. ..." once the pending Update
+88-96 sections are all pasted). Paste this in as a new Heading 1 section at
+the end, then delete this file.
+
+============================================================
+
+HEADING (Heading 1 style):
+109. Implementation Status Update 97 (3 September 2026) — Social Media Publishing — Composer, Publishing Engine & Status Dashboard (New Doc 24)
+
+BODY (Body Text style, one paragraph per block below):
+
+An administrator asked for a mini Buffer / Hootsuite inside MBMS: write one master post, fan it out to many social media channels in one click with per-platform caption overrides, publish now or schedule, and see per-platform success / failure. The architecture plan the administrator supplied is restated in the house format in the new doc 24.
+
+A new module (src/social-publishing) exposes /api/v1/social. Schema (migration 20260903220000_social_publishing): social_connections (a simulated OAuth connection per platform — status, account label, a ~60-day token expiry, a placeholder token reference; no real handshake), social_posts (master body, media type + text-reference url, link, status, scheduledFor) and social_post_targets (one row per platform per post — caption override, status, external id + permalink, error, attempts). Three new governance-domain permissions: social.post.manage, social.post.publish and social.post.viewAll — the "can create drafts vs can publish" split.
+
+Endpoints: GET /social/platforms; POST /social/platforms/:platform/{connect,disconnect}; GET / POST /social/posts, GET / PATCH / DELETE /social/posts/:id (get returns a per-platform preview); POST /social/posts/:id/publish (the single button), POST /social/posts/:id/retry, POST /social/run-scheduled; GET /social/dashboard. Every mutation is audited.
+
+The publish itself is SIMULATED — no OAuth handshake, platform API call or job queue exists in this build (the same deferred external integration recorded for Kafka, object storage and email / SMS); the connection / post / target / partial-failure / retry / dashboard shape is real. Admin gains a Social Publishing screen under ADMIN / BACKEND (four tabs). Verified end to end against the running system; nest build, admin vite build and prisma migrate deploy all clean; openapi.json regenerated (378 paths / 481 operations).
+
+HEADING (Heading 2 style):
+Impact on this document
+
+BODY (Body Text style):
+Scope note — a new core feature area (group social media publishing) and a new specification document (doc 24). Additive (one module, three tables, three governance permissions, one admin screen); the live platform integration is a documented deferral; no change to project scope framing, phasing, cost basis or architecture position.

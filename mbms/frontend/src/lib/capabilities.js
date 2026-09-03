@@ -35,6 +35,7 @@ export const ROUTE_CAPABILITIES = {
   '/support-tickets': ['support.ticket.manage', 'support.ticket.viewAll'],
   '/marketing': ['marketing.manage', 'marketing.viewAll'],
   '/cms': ['cms.manage', 'cms.viewAll'],
+  '/social': ['social.post.manage', 'social.post.publish', 'social.post.viewAll'],
   '/users': ['identity.user.manage', 'identity.user.delegate'],
   '/audit': ['audit.view'],
 

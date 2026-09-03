@@ -2905,6 +2905,107 @@ model SocialContent {
   @@map("social_content")
 }
 
+// ===================== Social Media Publishing (3 September 2026) =================
+// The Admin » Social Publishing section — a mini Buffer / Hootsuite: write one
+// master post, fan it out to many connected channels in one click with
+// per-platform caption overrides, publish now or schedule, and track
+// per-platform success / failure. Site-wide, same scope model as
+// SocialLink / SocialContent (managed by holders of social.post.*). See
+// docx/24 for the full specification.
+//
+// The actual platform publish is SIMULATED in this proof-of-concept: no
+// real OAuth handshake or platform API call exists — the same deferred
+// external integration already noted for Kafka, object storage and
+// email / SMS. What IS real is the shape a genuine integration slots into:
+// a connection per platform, a post, one target row per platform with its
+// own status / external id / error, a fan-out publish step with partial
+// failure and retry, and a status dashboard.
+
+enum SocialPostStatus {
+  draft
+  scheduled
+  publishing
+  published
+  partially_failed
+  failed
+}
+
+enum SocialTargetStatus {
+  pending // selected, not yet attempted
+  publishing // in flight (transient — the inline simulated engine sets it briefly)
+  success
+  failed
+  skipped // platform not connected / de-selected before the run
+}
+
+enum SocialMediaType {
+  none
+  image
+  video
+  link
+}
+
+// A simulated OAuth connection to one platform's publishing API. A row
+// exists only while the platform is connected. `accessTokenRef` is a
+// placeholder — no real token is stored (there is no OAuth handshake in
+// this build). `tokenExpiresAt` models the ~60-day expiry real platforms
+// impose so the dashboard can warn before it lapses.
+model SocialConnection {
+  platform       SocialPlatform @id
+  status         String         @default("connected") @db.VarChar(20) // connected | expired | revoked
+  accountLabel   String?        @map("account_label") @db.VarChar(160) // e.g. "@moriseholdings"
+  connectedBy    String         @map("connected_by")
+  connectedAt    DateTime       @default(now()) @map("connected_at")
+  tokenExpiresAt DateTime?      @map("token_expires_at")
+  accessTokenRef String?        @map("access_token_ref") @db.VarChar(120)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  @@map("social_connections")
+}
+
+model SocialPost {
+  id           String           @id @default(uuid())
+  title        String?          @db.VarChar(160) // internal label, not published
+  bodyMaster   String           @map("body_master") // the master caption; per-platform overrides live on the target
+  mediaType    SocialMediaType  @default(none) @map("media_type")
+  mediaUrl     String?          @map("media_url") @db.VarChar(1000) // text reference — object-storage gap
+  linkUrl      String?          @map("link_url") @db.VarChar(1000)
+  status       SocialPostStatus @default(draft)
+  scheduledFor DateTime?        @map("scheduled_for")
+  publishedAt  DateTime?        @map("published_at")
+  createdBy    String           @map("created_by")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  targets SocialPostTarget[]
+
+  @@index([status])
+  @@map("social_posts")
+}
+
+model SocialPostTarget {
+  id            String             @id @default(uuid())
+  postId        String             @map("post_id")
+  platform      SocialPlatform
+  caption       String? // per-platform override; null = use the post's bodyMaster
+  status        SocialTargetStatus @default(pending)
+  externalId    String?            @map("external_id") @db.VarChar(120) // the id the platform "returned"
+  externalUrl   String?            @map("external_url") @db.VarChar(1000) // permalink to the live post
+  error         String? // failure reason shown on the status dashboard
+  attempts      Int                @default(0)
+  lastAttemptAt DateTime?          @map("last_attempt_at")
+  publishedAt   DateTime?          @map("published_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, platform])
+  @@index([postId])
+  @@map("social_post_targets")
+}
+
 // Landing-page FAQ (29 August 2026) — managed in Admin » CMS / Site Builder,
 // shown in the FAQ section of the corporate landing page. Site-wide.
 

@@ -4677,6 +4677,234 @@
         }
       }
     },
+    "/api/v1/social/platforms": {
+      "get": {
+        "operationId": "SocialPublishingController_platforms",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/social/platforms/{platform}/connect": {
+      "post": {
+        "operationId": "SocialPublishingController_connect",
+        "parameters": [
+          {
+            "name": "platform",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectPlatformDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/social/platforms/{platform}/disconnect": {
+      "post": {
+        "operationId": "SocialPublishingController_disconnect",
+        "parameters": [
+          {
+            "name": "platform",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/social/dashboard": {
+      "get": {
+        "operationId": "SocialPublishingController_dashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/social/posts": {
+      "get": {
+        "operationId": "SocialPublishingController_list",
+        "parameters": [
+          {
+            "name": "filter[status]",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "SocialPublishingController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSocialPostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/social/run-scheduled": {
+      "post": {
+        "operationId": "SocialPublishingController_runScheduled",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/social/posts/{id}": {
+      "get": {
+        "operationId": "SocialPublishingController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "operationId": "SocialPublishingController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSocialPostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "SocialPublishingController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/social/posts/{id}/publish": {
+      "post": {
+        "operationId": "SocialPublishingController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/social/posts/{id}/retry": {
+      "post": {
+        "operationId": "SocialPublishingController_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/accounting/accounts": {
       "get": {
         "operationId": "AccountsController_list",
@@ -13913,6 +14141,123 @@
           },
           "isVisible": {
             "type": "boolean"
+          }
+        }
+      },
+      "ConnectPlatformDto": {
+        "type": "object",
+        "properties": {
+          "accountLabel": {
+            "type": "string",
+            "maxLength": 160
+          }
+        }
+      },
+      "SocialTargetInputDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "facebook",
+              "x",
+              "instagram",
+              "linkedin",
+              "youtube",
+              "tiktok",
+              "whatsapp",
+              "telegram",
+              "other"
+            ]
+          },
+          "caption": {
+            "type": "string",
+            "maxLength": 8000
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      },
+      "CreateSocialPostDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "bodyMaster": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "none",
+              "image",
+              "video",
+              "link"
+            ]
+          },
+          "mediaUrl": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "linkUrl": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SocialTargetInputDto"
+            }
+          },
+          "scheduledFor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bodyMaster",
+          "targets"
+        ]
+      },
+      "UpdateSocialPostDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "bodyMaster": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "none",
+              "image",
+              "video",
+              "link"
+            ]
+          },
+          "mediaUrl": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "linkUrl": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SocialTargetInputDto"
+            }
+          },
+          "scheduledFor": {
+            "type": "string"
           }
         }
       },

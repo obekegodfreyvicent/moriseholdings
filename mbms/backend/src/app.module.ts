@@ -18,6 +18,7 @@ import { ProductsModule } from './products/products.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { MarketingModule } from './marketing/marketing.module';
 import { CmsModule } from './cms/cms.module';
+import { SocialPublishingModule } from './social-publishing/social-publishing.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { AssetsModule } from './assets/assets.module';
@@ -67,6 +68,7 @@ import { HealthController } from './health.controller';
     InventoryModule,
     MarketingModule,
     CmsModule,
+    SocialPublishingModule,
     AccountingModule,
     ExpensesModule,
     AssetsModule,

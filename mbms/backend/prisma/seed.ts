@@ -162,6 +162,14 @@ const PERMISSIONS = [
   // photo reference or expiry, and run the sweep, within your scope.
   { code: 'employee.idcard.manage', domain: 'hr', description: 'Issue, reissue, revoke, restore and correct staff identification cards, and run the bulk generation, within your scope.' },
   { code: 'employee.idcard.viewAll', domain: 'hr', description: 'View every staff identification card group-wide, not only those in your own scope.' },
+  // Social Media Publishing (3 September 2026) — the Admin "Social Publishing"
+  // section (docx/24). manage = draft / edit / delete posts and connect or
+  // disconnect channels; publish = fan a post out to every channel, retry a
+  // failed target and run the schedule (the "can create drafts vs can
+  // publish" split); viewAll = see the composer, posts and status dashboard.
+  { code: 'social.post.manage', domain: 'governance', description: 'Draft, edit and delete social media posts, and connect or disconnect publishing channels.' },
+  { code: 'social.post.publish', domain: 'governance', description: 'Publish a social media post to every selected channel, retry a failed channel, and run scheduled posts.' },
+  { code: 'social.post.viewAll', domain: 'governance', description: 'View the social media composer, posts and the publishing status dashboard.' },
 ];
 
 // Sprint 1+2+3 (+ basic accounting/dashboard) wires permissions only for the
@@ -686,6 +694,20 @@ for (const r of ['Super Administrator', 'Managing Director', 'IT Administrator',
 ROLE_PERMISSIONS['Branch Manager'].push('employee.idcard.manage');
 for (const r of ['Group CEO', 'Auditor', 'External Auditor', 'Board Member', 'Read-only User', 'Legal Officer', 'Operations Manager']) {
   ROLE_PERMISSIONS[r].push('employee.idcard.viewAll');
+}
+
+// Social Media Publishing (3 September 2026) — governance-domain, same
+// "everything" convention as cms.* for the platform-admin roles. manage +
+// publish + viewAll to Super Administrator / Managing Director / IT
+// Administrator; manage + viewAll (drafts, no publish) to Sales Manager (it
+// already holds marketing.manage — social is the marketing function);
+// viewAll to the oversight roles.
+for (const r of ['Super Administrator', 'Managing Director', 'IT Administrator']) {
+  ROLE_PERMISSIONS[r].push('social.post.manage', 'social.post.publish', 'social.post.viewAll');
+}
+ROLE_PERMISSIONS['Sales Manager'].push('social.post.manage', 'social.post.viewAll');
+for (const r of ['Group CEO', 'Auditor', 'External Auditor', 'Board Member', 'Read-only User', 'Legal Officer']) {
+  ROLE_PERMISSIONS[r].push('social.post.viewAll');
 }
 
 async function main() {
@@ -3139,6 +3161,85 @@ async function main() {
       updatedBy: mathias.id,
     },
   });
+
+  // Social Media Publishing (3 September 2026) — the Admin "Social
+  // Publishing" section (docx/24). Connect four channels (simulated OAuth),
+  // and seed one published post and one draft so the composer, engine and
+  // dashboard are not empty on first login. Idempotent.
+  console.log('Seeding Social Publishing: connected channels + demo posts (3 September 2026)...');
+  for (const platform of ['facebook', 'x', 'linkedin', 'instagram'] as const) {
+    await prisma.socialConnection.upsert({
+      where: { platform },
+      update: {},
+      create: {
+        platform,
+        status: 'connected',
+        accountLabel: '@moriseholdings',
+        connectedBy: mathias.id,
+        tokenExpiresAt: new Date(Date.now() + 52 * 86_400_000),
+        accessTokenRef: `sim_${platform}_seed01`,
+      },
+    });
+  }
+  if ((await prisma.socialPost.count()) === 0) {
+    const published = await prisma.socialPost.create({
+      data: {
+        title: 'Group storefront launch',
+        bodyMaster:
+          'The Morise Holdings group storefront is now open — order goods and services from every Morise company in one place, with delivery tracking and account statements. Visit the shop to get started.',
+        mediaType: 'link',
+        linkUrl: 'https://morise-holdings.example/shop',
+        status: 'published',
+        publishedAt: new Date('2026-08-29T09:00:00Z'),
+        createdBy: mathias.id,
+        targets: {
+          create: [
+            { platform: 'facebook', status: 'success', externalId: 'sim-facebook-seed01', externalUrl: 'https://facebook.com/p/sim-facebook-seed01', attempts: 1, lastAttemptAt: new Date('2026-08-29T09:00:00Z'), publishedAt: new Date('2026-08-29T09:00:00Z') },
+            { platform: 'x', status: 'success', externalId: 'sim-x-seed01', externalUrl: 'https://x.com/p/sim-x-seed01', attempts: 1, lastAttemptAt: new Date('2026-08-29T09:00:00Z'), publishedAt: new Date('2026-08-29T09:00:00Z') },
+            { platform: 'linkedin', status: 'success', externalId: 'sim-linkedin-seed01', externalUrl: 'https://linkedin.com/p/sim-linkedin-seed01', attempts: 1, lastAttemptAt: new Date('2026-08-29T09:00:00Z'), publishedAt: new Date('2026-08-29T09:00:00Z') },
+          ],
+        },
+      },
+    });
+    void published;
+    await prisma.socialPost.create({
+      data: {
+        title: 'Milling subsidiary announcement (draft)',
+        bodyMaster:
+          'Morise Holdings has incorporated Morise Milling Ltd — grain procurement over the weighbridge, milling of maize, wheat, sorghum and millet, and packaged distribution across five regional mills. More soon.',
+        mediaType: 'none',
+        status: 'draft',
+        createdBy: mathias.id,
+        targets: {
+          create: [
+            { platform: 'facebook', status: 'pending' },
+            { platform: 'linkedin', status: 'pending', caption: 'We are pleased to announce the incorporation of Morise Milling Ltd, the group\'s sixth operating company — grain milling from weighbridge to packaged flour across five regional mills.' },
+            { platform: 'instagram', status: 'pending' },
+          ],
+        },
+      },
+    });
+    // A scheduled post whose time has already passed — click "Run
+    // scheduled" (or POST /api/v1/social/run-scheduled) in the demo and it
+    // fans out immediately.
+    await prisma.socialPost.create({
+      data: {
+        title: 'Weekly agro-input price update (scheduled)',
+        bodyMaster:
+          'This week at Morise Agro Ltd: fresh stock of certified maize and bean seed, NPK and urea, plus fuel at all depots. Order on the group storefront for scheduled delivery.',
+        mediaType: 'none',
+        status: 'scheduled',
+        scheduledFor: new Date('2026-09-03T12:00:00Z'),
+        createdBy: mathias.id,
+        targets: {
+          create: [
+            { platform: 'facebook', status: 'pending' },
+            { platform: 'x', status: 'pending', caption: 'This week @ Morise Agro: certified maize & bean seed, NPK, urea and fuel at all depots. Order on the group storefront for scheduled delivery.' },
+          ],
+        },
+      },
+    });
+  }
 
   // Landing-page FAQ (29 August 2026) — managed in Admin » CMS / Site
   // Builder, shown in the FAQ section of the corporate landing page. Fixed

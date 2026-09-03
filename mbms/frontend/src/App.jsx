@@ -17,6 +17,7 @@ import { AlertsPage } from './pages/Alerts';
 import { ExecutivePage } from './pages/Executive';
 import { MarketingPage } from './pages/Marketing';
 import { CmsPage } from './pages/Cms';
+import { SocialPublishingPage } from './pages/SocialPublishing';
 import { HrDashboardPage } from './pages/Hr';
 import { DepartmentsPage } from './pages/Departments';
 import { ShiftSchedulingPage } from './pages/ShiftScheduling';
@@ -150,6 +151,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <CmsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/social"
+            element={
+              <RequireAuth>
+                <SocialPublishingPage />
               </RequireAuth>
             }
           />
