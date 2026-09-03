@@ -39,7 +39,7 @@ export function StaffIdCardsPage() {
   async function load() {
     setError(null);
     try {
-      const query = { pageSize: 200 };
+      const query = { pageSize: 100 };
       if (companyId) query['filter[companyId]'] = companyId;
       if (status) query['filter[status]'] = status;
       if (search.trim()) query['filter[search]'] = search.trim();
@@ -232,7 +232,7 @@ function IssueModal({ companies, excludeEmployeeIds, onClose, onDone }) {
   useEffect(() => {
     setEmployees(null);
     setEmployeeId('');
-    const query = { pageSize: 200, 'filter[status]': 'active' };
+    const query = { pageSize: 100, 'filter[status]': 'active' };
     if (companyId) query['filter[companyId]'] = companyId;
     apiRequestWithMeta('/employees', query)
       .then(({ items }) => setEmployees(items.filter((e) => !excludeEmployeeIds.has(e.id))))
