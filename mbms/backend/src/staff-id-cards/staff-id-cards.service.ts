@@ -43,7 +43,6 @@ type CardWithEmployee = {
   revokedOn: Date | null;
   revokedReason: string | null;
   photoUrl: string | null;
-  bloodGroup: string | null;
   backNotes: string | null;
   issuedByUserId: string | null;
   reissueCount: number;
@@ -172,7 +171,6 @@ export class StaffIdCardsService {
       revokedOn: c.revokedOn,
       revokedReason: c.revokedReason,
       photoUrl: c.photoUrl,
-      bloodGroup: c.bloodGroup,
       backNotes: c.backNotes,
       reissueCount: c.reissueCount,
       issuedByUserId: c.issuedByUserId,
@@ -203,7 +201,6 @@ export class StaffIdCardsService {
         nationalId: e.nationalId,
         emergencyContactName: e.emergencyContactName,
         emergencyContactPhone: e.emergencyContactPhone,
-        bloodGroup: c.bloodGroup,
         notes: c.backNotes,
         issuingAuthority: 'Morise Holdings Limited',
         issuerAddress: co?.address ?? null,
@@ -372,7 +369,6 @@ export class StaffIdCardsService {
         issuedOn,
         expiresOn: addYears(issuedOn, dto.validYears ?? DEFAULT_VALID_YEARS),
         photoUrl: dto.photoUrl?.trim() || null,
-        bloodGroup: dto.bloodGroup?.trim() || null,
         backNotes: dto.backNotes?.trim() || null,
         issuedByUserId: user.id,
       },
@@ -452,7 +448,6 @@ export class StaffIdCardsService {
     const card = await this.loadOrThrow(user, id);
     const data: any = {};
     if (dto.photoUrl !== undefined) data.photoUrl = dto.photoUrl.trim() || null;
-    if (dto.bloodGroup !== undefined) data.bloodGroup = dto.bloodGroup.trim() || null;
     if (dto.backNotes !== undefined) data.backNotes = dto.backNotes.trim() || null;
     if (dto.expiresOn !== undefined) {
       const expiresOn = new Date(dto.expiresOn);

@@ -12502,10 +12502,6 @@
           "issuedOn": {
             "type": "string"
           },
-          "bloodGroup": {
-            "type": "string",
-            "maxLength": 8
-          },
           "backNotes": {
             "type": "string",
             "maxLength": 500
@@ -12524,10 +12520,6 @@
           },
           "expiresOn": {
             "type": "string"
-          },
-          "bloodGroup": {
-            "type": "string",
-            "maxLength": 8
           },
           "backNotes": {
             "type": "string",

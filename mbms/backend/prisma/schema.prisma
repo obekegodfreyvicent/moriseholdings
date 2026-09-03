@@ -351,9 +351,8 @@ model StaffIdCard {
   photoUrl         String?           @map("photo_url") @db.VarChar(500)
   // Card back (3 September 2026). The rest of the back face is derived at
   // read time from the Employee (national id, emergency contact) and the
-  // Company (issuer address / contact); these two are the only card-held
-  // back fields an administrator sets by hand.
-  bloodGroup       String?           @map("blood_group") @db.VarChar(8)
+  // Company (issuer address / contact); this free-text note is the only
+  // card-held back field an administrator sets by hand.
   backNotes        String?           @map("back_notes")
   issuedByUserId   String?           @map("issued_by_user_id")
   reissueCount     Int               @default(0) @map("reissue_count")

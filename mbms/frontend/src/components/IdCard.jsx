@@ -5,13 +5,14 @@ import Logo from './Logo';
 // admin gallery (Staff ID Cards) and My HR → My ID Card. `card` is a
 // resource from /api/v1/staff-id-cards or /api/v1/my-hr/id-card.
 //
-// The card has a FRONT and a BACK (3 September 2026):
+// The card has a FRONT and a BACK, both the SAME SIZE (a fixed
+// CARD_W × CARD_H rectangle):
 //   • front — logo header, photo / initials, holder details, the QR block,
 //     card number and issue / expiry;
-//   • back  — a signature-panel strip, standard conditions of use, the
-//     "property of / if found return to" block with the issuer's address,
-//     the holder's emergency contact / national ID / blood group, any
-//     free-text note, and a Code 128-style barcode of the card number.
+//   • back  — a signature-panel strip, the holder's national ID and
+//     emergency contact, the standard conditions of use, the "if found,
+//     return to" block with the issuer's address, any free-text note, and a
+//     Code 128-style barcode of the card number anchored to the bottom edge.
 //
 // The QR block and the barcode are deterministic monochrome stand-ins (no
 // real encoder is bundled in this proof-of-concept); the verification code
@@ -20,6 +21,7 @@ import Logo from './Logo';
 const NAVY = '#1E3A5F';
 const AMBER = '#D97706';
 const CARD_W = 340;
+const CARD_H = 240; // front and back share this exact box
 
 function fauxQr(seed, n = 11) {
   let h = 1779033703 ^ String(seed || '').length;
@@ -91,11 +93,15 @@ export function IdCardFace({ card, side = 'front', scale = 1 }) {
   const back = card.back || {};
   const badge = statusBadge(card);
   const W = Math.round(CARD_W * scale);
+  const H = Math.round(CARD_H * scale);
   const pad = 14 * scale;
   const photo = e.photoUrl || card.photoUrl;
 
   const shell = {
     width: W,
+    height: H,
+    display: 'flex',
+    flexDirection: 'column',
     border: '1px solid #d7deea',
     borderRadius: 14,
     overflow: 'hidden',
@@ -108,63 +114,60 @@ export function IdCardFace({ card, side = 'front', scale = 1 }) {
   if (side === 'back') {
     const bars = fauxBars(card.cardNumber);
     const terms = Array.isArray(back.terms) && back.terms.length ? back.terms : DEFAULT_TERMS;
+    const qr = fauxQr(card.verificationCode || card.cardNumber);
     return (
       <div className="idcard idcard-back" style={shell}>
-        <div style={{ background: NAVY, color: '#fff', padding: `${8 * scale}px ${pad}px`, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ background: NAVY, color: '#fff', padding: `${7 * scale}px ${pad}px`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <span style={{ display: 'inline-flex', background: '#fff', borderRadius: 6, padding: 3 }}>
-            <Logo size={16 * scale} />
+            <Logo size={15 * scale} />
           </span>
-          <div style={{ fontSize: 9.5 * scale, letterSpacing: '.08em', opacity: 0.85 }}>STAFF IDENTIFICATION CARD — BACK</div>
+          <div style={{ fontSize: 9 * scale, letterSpacing: '.08em', opacity: 0.85 }}>STAFF IDENTIFICATION CARD — BACK</div>
         </div>
 
         {/* signature panel / "magnetic stripe" strip */}
-        <div style={{ height: 22 * scale, background: '#11213a', margin: `${10 * scale}px 0` }} />
+        <div style={{ height: 18 * scale, background: '#11213a', margin: `${6 * scale}px 0`, flexShrink: 0 }} />
 
-        <div style={{ padding: `0 ${pad}px ${pad}px` }}>
-          <div style={{ display: 'flex', gap: 10 * scale, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 120 * scale }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: `0 ${pad}px ${10 * scale}px`, display: 'flex', flexDirection: 'column', gap: 5 * scale }}>
+          <div style={{ display: 'flex', gap: 10 * scale }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <BackRow label="National ID" value={back.nationalId} scale={scale} />
-              <BackRow label="Blood group" value={back.bloodGroup} scale={scale} />
               <BackRow label="Emergency" value={back.emergencyContactName} scale={scale} />
               <BackRow label="Emerg. tel." value={back.emergencyContactPhone} scale={scale} />
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <svg width={58 * scale} height={58 * scale} viewBox={`0 0 ${fauxQr(card.verificationCode || card.cardNumber).n} ${fauxQr(card.verificationCode || card.cardNumber).n}`} shapeRendering="crispEdges" style={{ background: '#fff' }} aria-label="Verification code">
-                {fauxQr(card.verificationCode || card.cardNumber).cells.map((v, i) =>
-                  v ? <rect key={i} x={i % 11} y={Math.floor(i / 11)} width="1" height="1" fill={NAVY} /> : null,
-                )}
+            <div style={{ textAlign: 'center', flexShrink: 0 }}>
+              <svg width={46 * scale} height={46 * scale} viewBox={`0 0 ${qr.n} ${qr.n}`} shapeRendering="crispEdges" style={{ background: '#fff' }} aria-label="Verification code">
+                {qr.cells.map((v, i) => (v ? <rect key={i} x={i % qr.n} y={Math.floor(i / qr.n)} width="1" height="1" fill={NAVY} /> : null))}
               </svg>
-              <div style={{ fontSize: 8 * scale, color: '#8592a8' }}>scan to verify</div>
+              <div style={{ fontSize: 7.5 * scale, color: '#8592a8' }}>scan to verify</div>
             </div>
           </div>
 
           {back.notes && (
-            <div style={{ marginTop: 8 * scale, fontSize: 10.5 * scale, color: '#2b3a52' }}>
+            <div style={{ fontSize: 9 * scale, color: '#2b3a52', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <span style={{ color: '#8592a8' }}>Note: </span>{back.notes}
             </div>
           )}
 
-          <ol style={{ margin: `${10 * scale}px 0 0`, paddingLeft: 16 * scale, fontSize: 9 * scale, color: '#5b6a85', lineHeight: 1.5 }}>
+          <ol style={{ margin: 0, paddingLeft: 14 * scale, fontSize: 7.5 * scale, color: '#5b6a85', lineHeight: 1.35 }}>
             {terms.map((t, i) => <li key={i}>{t}</li>)}
           </ol>
 
-          <div style={{ marginTop: 8 * scale, fontSize: 9.5 * scale, color: '#2b3a52' }}>
+          <div style={{ fontSize: 8.5 * scale, color: '#2b3a52' }}>
             <strong>If found</strong>, return to {back.issuingAuthority || 'Morise Holdings Limited'}
             {back.issuerAddress ? `, ${back.issuerAddress}` : ''}
             {back.issuerContact ? ` · ${back.issuerContact}` : ''}.
           </div>
 
-          {/* barcode of the card number */}
-          <div style={{ marginTop: 10 * scale }}>
-            <svg width="100%" height={30 * scale} viewBox={`0 0 ${bars.total} 30`} preserveAspectRatio="none" shapeRendering="crispEdges" aria-label={`Barcode ${card.cardNumber}`}>
-              {bars.bars.map((b, i) => (b.on ? <rect key={i} x={b.x} y="0" width={b.w} height="30" fill="#11213a" /> : null))}
+          {/* barcode + signature lines, anchored to the bottom edge */}
+          <div style={{ marginTop: 'auto' }}>
+            <svg width="100%" height={26 * scale} viewBox={`0 0 ${bars.total} 26`} preserveAspectRatio="none" shapeRendering="crispEdges" aria-label={`Barcode ${card.cardNumber}`}>
+              {bars.bars.map((b, i) => (b.on ? <rect key={i} x={b.x} y="0" width={b.w} height="26" fill="#11213a" /> : null))}
             </svg>
-            <div className="mono" style={{ textAlign: 'center', fontSize: 10 * scale, letterSpacing: '.15em', color: NAVY }}>{card.cardNumber}</div>
-          </div>
-
-          <div style={{ marginTop: 8 * scale, display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 8.5 * scale, color: '#8592a8' }}>
-            <span style={{ borderTop: '1px solid #c6d1e3', paddingTop: 2, flex: 1 }}>Holder's signature</span>
-            <span style={{ borderTop: '1px solid #c6d1e3', paddingTop: 2, flex: 1, textAlign: 'right' }}>Issuing officer</span>
+            <div className="mono" style={{ textAlign: 'center', fontSize: 9.5 * scale, letterSpacing: '.15em', color: NAVY }}>{card.cardNumber}</div>
+            <div style={{ marginTop: 6 * scale, display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 8 * scale, color: '#8592a8' }}>
+              <span style={{ borderTop: '1px solid #c6d1e3', paddingTop: 2, flex: 1 }}>Holder's signature</span>
+              <span style={{ borderTop: '1px solid #c6d1e3', paddingTop: 2, flex: 1, textAlign: 'right' }}>Issuing officer</span>
+            </div>
           </div>
         </div>
       </div>
@@ -175,7 +178,7 @@ export function IdCardFace({ card, side = 'front', scale = 1 }) {
   const qr = fauxQr(card.verificationCode || card.cardNumber);
   return (
     <div className="idcard idcard-front" style={shell}>
-      <div style={{ background: NAVY, color: '#fff', padding: `${10 * scale}px ${pad}px`, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ background: NAVY, color: '#fff', padding: `${10 * scale}px ${pad}px`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <span style={{ display: 'inline-flex', background: '#fff', borderRadius: 6, padding: 3 }}>
           <Logo size={20 * scale} />
         </span>
@@ -189,7 +192,7 @@ export function IdCardFace({ card, side = 'front', scale = 1 }) {
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: 12 * scale, padding: pad }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', gap: 12 * scale, padding: pad }}>
         <div
           style={{
             width: 74 * scale,
@@ -220,11 +223,9 @@ export function IdCardFace({ card, side = 'front', scale = 1 }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 * scale, borderTop: '1px solid #eef1f6', padding: `${10 * scale}px ${pad}px` }}>
-        <svg width={58 * scale} height={58 * scale} viewBox={`0 0 ${qr.n} ${qr.n}`} shapeRendering="crispEdges" style={{ flexShrink: 0, background: '#fff' }} aria-label="Verification code">
-          {qr.cells.map((v, i) =>
-            v ? <rect key={i} x={i % qr.n} y={Math.floor(i / qr.n)} width="1" height="1" fill={NAVY} /> : null,
-          )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 * scale, borderTop: '1px solid #eef1f6', padding: `${10 * scale}px ${pad}px`, flexShrink: 0 }}>
+        <svg width={54 * scale} height={54 * scale} viewBox={`0 0 ${qr.n} ${qr.n}`} shapeRendering="crispEdges" style={{ flexShrink: 0, background: '#fff' }} aria-label="Verification code">
+          {qr.cells.map((v, i) => (v ? <rect key={i} x={i % qr.n} y={Math.floor(i / qr.n)} width="1" height="1" fill={NAVY} /> : null))}
         </svg>
         <div style={{ minWidth: 0, flex: 1, lineHeight: 1.5 }}>
           <div className="mono" style={{ fontWeight: 700, color: NAVY, fontSize: 13 * scale }}>{card.cardNumber}</div>
@@ -293,9 +294,9 @@ function Row({ label, value, scale }) {
 
 function BackRow({ label, value, scale }) {
   return (
-    <div style={{ display: 'flex', gap: 6, fontSize: 10 * scale, marginBottom: 2 * scale }}>
-      <span style={{ color: '#8592a8', minWidth: 66 * scale }}>{label}</span>
-      <span style={{ color: '#2b3a52', fontWeight: 600 }}>{value || '—'}</span>
+    <div style={{ display: 'flex', gap: 6, fontSize: 9.5 * scale, marginBottom: 2 * scale }}>
+      <span style={{ color: '#8592a8', minWidth: 60 * scale, flexShrink: 0 }}>{label}</span>
+      <span style={{ color: '#2b3a52', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value || '—'}</span>
     </div>
   );
 }

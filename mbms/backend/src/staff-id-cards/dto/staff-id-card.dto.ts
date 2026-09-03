@@ -26,12 +26,7 @@ export class IssueCardDto {
   @IsDateString()
   issuedOn?: string;
 
-  // Card back.
-  @IsOptional()
-  @IsString()
-  @MaxLength(8)
-  bloodGroup?: string;
-
+  // Card back — a free-text note printed on the back face.
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -61,12 +56,7 @@ export class UpdateCardDto {
   @IsDateString()
   expiresOn?: string;
 
-  // Card back.
-  @IsOptional()
-  @IsString()
-  @MaxLength(8)
-  bloodGroup?: string;
-
+  // Card back — a free-text note printed on the back face.
   @IsOptional()
   @IsString()
   @MaxLength(500)

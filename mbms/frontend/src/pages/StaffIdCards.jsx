@@ -302,7 +302,6 @@ function IssueModal({ companies, excludeEmployeeIds, onClose, onDone }) {
 function EditModal({ card, onClose, onDone }) {
   const [photoUrl, setPhotoUrl] = useState(card.photoUrl || '');
   const [expiresOn, setExpiresOn] = useState((card.expiresOn || '').slice(0, 10));
-  const [bloodGroup, setBloodGroup] = useState(card.bloodGroup || '');
   const [backNotes, setBackNotes] = useState(card.backNotes || '');
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -317,7 +316,6 @@ function EditModal({ card, onClose, onDone }) {
         body: {
           photoUrl: photoUrl.trim(),
           expiresOn: expiresOn || undefined,
-          bloodGroup: bloodGroup.trim(),
           backNotes: backNotes.trim(),
         },
       });
@@ -345,10 +343,6 @@ function EditModal({ card, onClose, onDone }) {
             <div style={{ fontSize: 11.5, color: '#7c8aa3', marginTop: 4 }}>
               Setting a future date on an expired card reactivates it. A revoked card stays revoked until restored.
             </div>
-          </div>
-          <div className="field" style={{ marginBottom: 12 }}>
-            <label>Blood group <span style={{ color: '#8592a8', fontWeight: 400 }}>(back)</span></label>
-            <input className="input" placeholder="e.g. O+" maxLength={8} value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} />
           </div>
           <div className="field" style={{ marginBottom: 16 }}>
             <label>Back note <span style={{ color: '#8592a8', fontWeight: 400 }}>(back)</span></label>

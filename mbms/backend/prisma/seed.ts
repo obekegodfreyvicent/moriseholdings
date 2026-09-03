@@ -4282,10 +4282,6 @@ async function main() {
     expiresOn.setUTCFullYear(expiresOn.getUTCFullYear() + 3);
     const seen = new Set<string>();
     const hex = () => randomBytes(4).toString('hex').toUpperCase();
-    // A few illustrative blood groups so the card BACK face has content in
-    // the demo (the rest of the back — national id, emergency contact,
-    // issuer address — is derived from the Employee / Company records).
-    const bloodGroups = ['O+', 'A+', 'B+', 'AB+', 'O-'];
     let issued = 0;
     for (const emp of activeStaff) {
       let cardNumber = `MID-${hex()}`;
@@ -4300,7 +4296,6 @@ async function main() {
           status: 'active',
           issuedOn: today,
           expiresOn,
-          bloodGroup: bloodGroups[issued % bloodGroups.length],
         },
       });
       issued++;

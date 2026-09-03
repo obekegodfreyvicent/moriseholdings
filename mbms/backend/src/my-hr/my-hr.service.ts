@@ -89,7 +89,6 @@ export class MyHrService {
         expiresOn: card.expiresOn,
         revokedReason: card.revokedReason,
         photoUrl: card.photoUrl,
-        bloodGroup: card.bloodGroup,
         backNotes: card.backNotes,
         reissueCount: card.reissueCount,
         employee: {
@@ -113,7 +112,6 @@ export class MyHrService {
           nationalId: e.nationalId,
           emergencyContactName: e.emergencyContactName,
           emergencyContactPhone: e.emergencyContactPhone,
-          bloodGroup: card.bloodGroup,
           notes: card.backNotes,
           issuingAuthority: 'Morise Holdings Limited',
           issuerAddress: company?.address ?? null,
