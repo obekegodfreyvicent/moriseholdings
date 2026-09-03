@@ -581,6 +581,43 @@ export class DeliveryService {
     };
   }
 
+  // GET /customer-portal/orders/awaiting-confirmation — the customer's own
+  // orders whose delivery is completed but not yet confirmed, so the
+  // storefront can surface a clear "Confirm receipt" button / link (Home
+  // prompt, an Orders-row link, and the dedicated /orders/:id/confirm page).
+  async listAwaitingConfirmationForCustomer(customer: AuthenticatedCustomer) {
+    const rows = await this.prisma.delivery.findMany({
+      where: { customerId: customer.id, status: 'delivered', customerAckAt: null, orderId: { not: null } },
+      orderBy: { deliveredAt: 'asc' },
+      select: {
+        orderId: true,
+        deliveryNumber: true,
+        deliveredAt: true,
+        originCompanyId: true,
+      },
+    });
+    if (rows.length === 0) return [];
+    const [orders, companies] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { id: { in: rows.map((r) => r.orderId as string) } },
+        select: { id: true, orderNumber: true },
+      }),
+      this.prisma.company.findMany({
+        where: { id: { in: [...new Set(rows.map((r) => r.originCompanyId))] } },
+        select: { id: true, name: true },
+      }),
+    ]);
+    const orderNumber = new Map(orders.map((o) => [o.id, o.orderNumber]));
+    const companyName = new Map(companies.map((c) => [c.id, c.name]));
+    return rows.map((r) => ({
+      orderId: r.orderId,
+      orderNumber: orderNumber.get(r.orderId as string) ?? null,
+      deliveryNumber: r.deliveryNumber,
+      deliveredAt: r.deliveredAt,
+      companyName: companyName.get(r.originCompanyId) ?? null,
+    }));
+  }
+
   // POST /customer-portal/orders/:id/delivery/acknowledge — the customer
   // confirms (or reports a problem with) a completed delivery. A "good"
   // acknowledgement automatically issues a Morise e-Stamp on the order's

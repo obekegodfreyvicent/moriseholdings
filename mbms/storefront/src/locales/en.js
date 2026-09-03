@@ -193,6 +193,9 @@ export const en = {
   'home.invoicesOverdue': '{count} invoices overdue',
   'home.ordersInProgress': 'Orders In Progress',
   'home.openTickets': 'Open Support Tickets',
+  'home.confirmPrompt': 'You have {count} delivery(ies) awaiting your confirmation.',
+  'home.confirmPromptNote': 'Confirm you received the goods / services in good condition to have a Morise e-Stamp added to your invoice.',
+  'home.confirmNow': 'Confirm now',
   'home.creditLimit': 'Credit Limit',
   'home.creditUtilized': '{percent}% utilized',
   'home.recentOrders': 'Recent Orders',
@@ -302,6 +305,16 @@ export const en = {
   'orders.ack.condition.damaged': 'Goods arrived damaged',
   'orders.ack.condition.incomplete': 'Delivery was incomplete',
   'orders.ack.condition.not_received': 'Goods were not received',
+  'orders.ack.confirmLink': 'Confirm receipt →',
+  // Dedicated confirm-delivery page (/orders/:id/confirm)
+  'confirm.crumb': 'Confirm delivery',
+  'confirm.heading': 'Confirm your delivery',
+  'confirm.orderLine': 'Order {order} — {company}',
+  'confirm.nothingToConfirm': 'There is nothing to confirm for this order yet.',
+  'confirm.prompt': 'Please confirm that you received the goods / services in good condition. A Morise e-Stamp will then be added to your invoice automatically.',
+  'confirm.confirmBtn': 'Confirm — received in good condition',
+  'confirm.downloadStamped': 'Download stamped invoice',
+  'confirm.backToOrders': 'Back to My Orders',
 
   // Invoices
   'invoices.heading': 'Invoices & Account Statement',

@@ -24,6 +24,7 @@ import { SubsidiariesPage } from './pages/Subsidiaries';
 import { ProductDetailPage } from './pages/ProductDetail';
 import { CartPage } from './pages/Cart';
 import { OrdersPage } from './pages/Orders';
+import { ConfirmDeliveryPage } from './pages/ConfirmDelivery';
 import { InvoicesPage } from './pages/Invoices';
 import { MakePaymentPage } from './pages/MakePayment';
 import { SupportPage } from './pages/Support';
@@ -113,6 +114,14 @@ export default function App() {
               element={
                 <RequireAuth>
                   <OrdersPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/orders/:id/confirm"
+              element={
+                <RequireAuth>
+                  <ConfirmDeliveryPage />
                 </RequireAuth>
               }
             />

@@ -75,6 +75,36 @@ export function HomePage() {
         </div>
       ))}
 
+      {summary.deliveriesToConfirm > 0 && (
+        <div
+          className="sf-card"
+          style={{ background: 'var(--sf-success-bg)', borderLeft: '4px solid var(--sf-success)', marginBottom: 14 }}
+        >
+          <div className="sf-row-between" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <strong style={{ fontSize: 15 }}>
+                {t('home.confirmPrompt', { count: figure(summary.deliveriesToConfirm) })}
+              </strong>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sf-text-muted)' }}>
+                {t('home.confirmPromptNote')}
+              </p>
+            </div>
+            <button
+              className="sf-btn sf-btn-primary"
+              onClick={() =>
+                navigate(
+                  summary.firstDeliveryToConfirmOrderId
+                    ? `/orders/${summary.firstDeliveryToConfirmOrderId}/confirm`
+                    : '/orders',
+                )
+              }
+            >
+              {t('home.confirmNow')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="sf-kpi-grid">
         <div className="sf-kpi">
           <div className="sf-kpi-label">{t('home.accountBalance')}</div>

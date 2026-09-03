@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useT, useI18n } from '../lib/i18n';
 import { apiRequest, apiRequestWithMeta } from '../lib/api';
@@ -13,6 +13,7 @@ export function OrdersPage() {
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [delivery, setDelivery] = useState(null);
+  const [awaitingIds, setAwaitingIds] = useState(new Set());
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [ackBusy, setAckBusy] = useState(false);
@@ -41,6 +42,12 @@ export function OrdersPage() {
   }, [statusFilter]);
 
   useEffect(() => {
+    apiRequest('/customer-portal/orders/awaiting-confirmation')
+      .then((rows) => setAwaitingIds(new Set((rows || []).map((r) => r.orderId))))
+      .catch(() => setAwaitingIds(new Set()));
+  }, []);
+
+  useEffect(() => {
     if (!selectedId) return;
     setDelivery(null);
     setProblemMode(false);
@@ -62,6 +69,11 @@ export function OrdersPage() {
       });
       const fresh = await apiRequest(`/customer-portal/orders/${selectedId}/delivery`);
       setDelivery(fresh);
+      setAwaitingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(selectedId);
+        return next;
+      });
       setProblemMode(false);
       setProblemNote('');
     } catch (err) {
@@ -157,6 +169,15 @@ export function OrdersPage() {
                     <td>{money(o.totalAmount)}</td>
                     <td>
                       <span className={`sf-badge ${statusBadgeClass(o.status)}`}>{tStatus(o.status)}</span>
+                      {awaitingIds.has(o.id) && (
+                        <Link
+                          to={`/orders/${o.id}/confirm`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}
+                        >
+                          {t('orders.ack.confirmLink')}
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}

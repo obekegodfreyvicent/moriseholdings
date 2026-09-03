@@ -11025,6 +11025,17 @@
         }
       }
     },
+    "/api/v1/customer-portal/orders/awaiting-confirmation": {
+      "get": {
+        "operationId": "CustomerOrdersController_awaitingConfirmation",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/customer-portal/orders/{id}": {
       "get": {
         "operationId": "CustomerOrdersController_get",

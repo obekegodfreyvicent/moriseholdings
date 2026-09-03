@@ -51,6 +51,14 @@ export class CustomerOrdersController {
     return this.ordersService.createForCustomer(customer, dto, this.translation.resolveLang(acceptLanguage));
   }
 
+  // Orders with a completed delivery the customer has not yet confirmed —
+  // drives the storefront's "Confirm receipt" prompts. Declared before the
+  // ':id' route so "awaiting-confirmation" is not parsed as an order id.
+  @Get('awaiting-confirmation')
+  awaitingConfirmation(@CurrentCustomer() customer: AuthenticatedCustomer) {
+    return this.deliveryService.listAwaitingConfirmationForCustomer(customer);
+  }
+
   @Get(':id')
   get(
     @CurrentCustomer() customer: AuthenticatedCustomer,

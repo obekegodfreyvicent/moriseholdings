@@ -7,6 +7,7 @@ import { AuthenticatedCustomer } from '../common/customer-auth.types';
 import { OrdersService } from '../../sales/orders.service';
 import { InvoicesService } from '../../sales/invoices.service';
 import { SupportService } from '../../support/support.service';
+import { DeliveryService } from '../../delivery/delivery.service';
 import { UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
 import { CreateDeliveryAddressDto } from './dto/create-delivery-address.dto';
 
@@ -79,6 +80,7 @@ export class CustomerAccountService {
     private readonly ordersService: OrdersService,
     private readonly invoicesService: InvoicesService,
     private readonly supportService: SupportService,
+    private readonly deliveryService: DeliveryService,
     private readonly translation: ContentTranslationService,
   ) {}
 
@@ -188,11 +190,12 @@ export class CustomerAccountService {
   // the figures can never drift between the dashboard and the screens they
   // summarize (Orders, Invoices & Payments, Support).
   async dashboardSummary(customer: AuthenticatedCustomer, lang = 'en') {
-    const [invoiceSummary, orders, tickets, record] = await Promise.all([
+    const [invoiceSummary, orders, tickets, record, awaitingConfirmation] = await Promise.all([
       this.invoicesService.summaryForCustomer(customer),
       this.ordersService.listForCustomer(customer, 1, 100, {}, lang),
       this.supportService.listForCustomer(customer, 1, 100),
       this.prisma.customer.findUniqueOrThrow({ where: { id: customer.id } }),
+      this.deliveryService.listAwaitingConfirmationForCustomer(customer),
     ]);
     const ordersInProgress = (orders.items as any[]).filter((o) => IN_PROGRESS_STATUSES.has(o.status)).length;
     const openTickets = (tickets.items as any[]).filter((t) => t.status !== 'resolved' && t.status !== 'closed').length;
@@ -202,6 +205,8 @@ export class CustomerAccountService {
       overdueInvoiceCount: invoiceSummary.overdueCount,
       ordersInProgress,
       openTickets,
+      deliveriesToConfirm: awaitingConfirmation.length,
+      firstDeliveryToConfirmOrderId: awaitingConfirmation[0]?.orderId ?? null,
       creditLimit: record.creditLimit?.toString() ?? null,
       creditUtilizedPercent: record.creditLimit ? Math.round((Number(invoiceSummary.totalOutstanding) / Number(record.creditLimit)) * 100) : null,
       recentOrders: (orders.items as any[]).slice(0, 3),
