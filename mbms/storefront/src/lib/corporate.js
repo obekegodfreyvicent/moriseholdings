@@ -36,6 +36,11 @@ export const SUBSIDIARY_META = {
     blurb: 'Field inspection, physical stock verification and chain-of-custody monitoring of goods pledged as collateral, for banks and financiers across client sites.',
     city: 'Kampala (Nakasero)',
   },
+  'Morise Milling Ltd': {
+    sector: 'Grain milling',
+    blurb: 'Grain procurement over the weighbridge, milling of maize, wheat, sorghum and millet, packaging and distribution of flour and by-products across five regional mills.',
+    city: 'Kampala (Industrial Area)',
+  },
 };
 
 export function metaFor(name) {
@@ -60,6 +65,7 @@ const SUBSIDIARY_BANNER = {
   'Morise Clearing & Forwarding Ltd': '/brand/banners/subsidiary-clearing-forwarding.svg',
   'Morise Warehouse Management Ltd': '/brand/banners/subsidiary-warehouse.svg',
   'Morise Collateral Management Ltd': '/brand/banners/subsidiary-collateral.svg',
+  'Morise Milling Ltd': '/brand/banners/subsidiary-milling.svg',
 };
 
 // A subsidiary's own banner, with the group hero as a safe fallback for a
@@ -84,6 +90,7 @@ export const LEADERSHIP = [
 // News / press — illustrative group announcements for the News page. Demo
 // content; there is no press-release store in this build.
 export const NEWS = [
+  { date: '3 Sep 2026', tag: 'Portfolio', title: 'Morise Milling Ltd incorporated as a wholly-owned subsidiary with five regional mills' },
   { date: '29 Aug 2026', tag: 'Digital', title: 'Group storefront opens across all four subsidiaries' },
   { date: '28 Aug 2026', tag: 'Operations', title: 'Warehouse Management rolls out shift scheduling and payroll' },
   { date: '27 Aug 2026', tag: 'Governance', title: 'Delegated administration model adopted group-wide' },

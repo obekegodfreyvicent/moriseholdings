@@ -1,0 +1,31 @@
+"01_Project Proposal - Morise Holdings Limited.docx" was open in LibreOffice
+during the "Morise Milling Ltd Subsidiary + Milling ERP Specification (New
+Doc 23)" pass (3 September 2026), so this section was NOT applied
+automatically. Every other doc 02-18 received it as "Implementation Status
+Update 93".
+
+Numbered heading: the next integer after the last "NN. Implementation Status
+Update N" heading in the file (it is "105. ..." once the pending
+Update 88-92 sections are all pasted). Paste this in as a new Heading 1
+section at the end, then delete this file.
+
+============================================================
+
+HEADING (Heading 1 style):
+105. Implementation Status Update 93 (3 September 2026) — Morise Milling Ltd Subsidiary + Milling ERP Specification (New Doc 23)
+
+BODY (Body Text style, one paragraph per block below):
+
+An administrator asked to add a new subsidiary under Morise Holdings Limited with a grain-milling concept, based on the client attachment "Software Development Features for a Milling Company".
+
+Morise Milling Ltd is seeded as a wholly-owned (100%) subsidiary (company id a1000000-0000-4000-8000-000000000007): six mill sites / branches (Kampala Head Office & Central Mill, Jinja Wheat & Maize Mill, Masindi Maize Mill, Mbale Millet & Sorghum Mill, Lira Grain Mill & Silos, Kampala Distribution Depot); twelve departments, one per architecture module (Grain Procurement & Weighbridge; Warehouse & Inventory; Production & Milling Lines; Machine & Maintenance; Quality Assurance & Control; Packaging; Sales & Customer Management; Distribution & Delivery; Finance & Accounting; Human Resources & Workforce; Procurement & Supplier Management; IT, IoT & Integrations); and six starter policies (Weighbridge Ticket Integrity, Grain Acceptance & Moisture Limits, Milling Yield & Loss Tolerance, Batch Traceability End to End, Preventive Maintenance Compliance, Food Safety & Product Release). Only prisma/seed.ts changes — no code, schema or permission change.
+
+The milling-specific system is a specification, not built. New doc 23 — Milling ERP & Integrated Business Management System — Feature Specification — restates the attachment in the house format: twelve feature modules from grain procurement over a weighbridge through production and milling lines, machine maintenance, QA/QC, packaging, sales, distribution, finance and workforce to a management dashboard with IoT / PLC integration and end-to-end supplier-to-customer batch traceability; plus non-functional requirements, an architecture overview, an integration table, the fifteen recommended roles, a technology-stack table, the organisation as seeded, a five-phase delivery roadmap and a section on reuse of the existing MBMS modules.
+
+The storefront's public site lists Morise Milling Ltd in the Companies directory (a SUBSIDIARY_META entry, a new subsidiary-milling.svg banner in the brand family mirrored into both apps, and a News item). Group figures become six subsidiaries and twenty-six sites / branches. Verified against the running system; admin and storefront builds are clean.
+
+HEADING (Heading 2 style):
+Impact on this document
+
+BODY (Body Text style):
+Scope note — the group gains a sixth wholly-owned operating company, Morise Milling Ltd (grain milling): its organisation is seeded and live, and its ERP is a specification and a phased backlog (new doc 23). Additive (seed data + one spec doc + a storefront listing and brand banner); no change to project scope framing, phasing, cost basis or architecture position.

@@ -975,6 +975,77 @@ async function main() {
   }
   // CMS starter policies are seeded further down, next to the C&F / WMS ones.
 
+  // Morise Milling Ltd (3 September 2026) — SIXTH spec-stage subsidiary, a
+  // grain-milling company: it buys grain (maize, wheat, sorghum, millet)
+  // over a weighbridge, mills it on production lines, packages the flour and
+  // by-products (bran, pollard), and sells and distributes the finished
+  // goods. Its "Milling ERP & Integrated Business Management System" is
+  // specified in docx/23_Milling ERP and Integrated Business Management
+  // System — Feature Specification and slated as a future phase; the org
+  // structure (company, mill sites, departments, starter policies) is seeded
+  // here so it is a real, manageable subsidiary from day one under the
+  // subsidiary-lifecycle capability. seed.ts only — no code / schema /
+  // permission change, not a storefront seller yet (0 products).
+  const milling = await prisma.company.upsert({
+    where: { id: 'a1000000-0000-4000-8000-000000000007' },
+    update: {},
+    create: {
+      id: 'a1000000-0000-4000-8000-000000000007',
+      parentCompanyId: holding.id,
+      relationshipType: 'subsidiary',
+      ownershipPercent: 100,
+      name: 'Morise Milling Ltd',
+      address: 'Plot 15, Nalukolongo Industrial Area, Kampala, Uganda',
+      currency: 'UGX',
+      financialYearStart: new Date('2026-01-01'),
+    },
+  });
+
+  // "Branches" model the head office / central mill plus the regional mill
+  // sites and the distribution depot — the same Branch record the rest of
+  // MBMS scopes by.
+  const millBranches = [
+    ['b1000000-0000-4000-8000-000000000040', 'Kampala Head Office & Central Mill', 'Plot 15, Nalukolongo Industrial Area, Kampala'],
+    ['b1000000-0000-4000-8000-000000000041', 'Jinja Wheat & Maize Mill', 'Masese Industrial Area, Jinja'],
+    ['b1000000-0000-4000-8000-000000000042', 'Masindi Maize Mill', 'Masindi–Hoima Road, Masindi'],
+    ['b1000000-0000-4000-8000-000000000043', 'Mbale Millet & Sorghum Mill', 'Industrial Division, Mbale'],
+    ['b1000000-0000-4000-8000-000000000044', 'Lira Grain Mill & Silos', 'Lira–Gulu Road, Lira'],
+    ['b1000000-0000-4000-8000-000000000045', 'Kampala Distribution Depot', 'Ntinda Industrial Area, Kampala'],
+  ] as const;
+  for (const [id, name, address] of millBranches) {
+    await prisma.branch.upsert({
+      where: { id },
+      update: {},
+      create: { id, companyId: milling.id, name, address },
+    });
+  }
+
+  // Twelve departments mirroring the twelve modules of the milling-ERP
+  // architecture in docx/23, Section 4. IDs start at ...0060 — ...0040–0042
+  // are already Morise Agro Ltd's departments.
+  const millDepartments = [
+    ['d1000000-0000-4000-8000-000000000060', 'Grain Procurement & Weighbridge', 'Supplier contracts, purchase orders and grain receiving; weighbridge integration with gross / tare / net weight capture; moisture measurement, foreign-matter detection and quality grading; lot / batch identification; rejected / returned grain; supplier payment tracking and raw-material stock monitoring.'],
+    ['d1000000-0000-4000-8000-000000000061', 'Warehouse & Inventory', 'Raw-material, finished-goods, packaging-material and spare-parts warehouses; bin / silo and stack management; batch / lot tracking; FIFO / FEFO control; stock receiving, issuing, transfers, adjustments and reservations; minimum / maximum levels; stock ageing, physical stocktaking and variance reporting.'],
+    ['d1000000-0000-4000-8000-000000000062', 'Production & Milling Lines', 'Production planning and daily schedules; production orders and milling-line management; machine allocation and operator assignment; shift management; raw-material consumption and output recording; milling yield and loss calculation; by-product and rework management; downtime / runtime tracking; OEE and target-versus-actual; batch traceability.'],
+    ['d1000000-0000-4000-8000-000000000063', 'Machine & Maintenance', 'Machine / equipment register; preventive and corrective maintenance; maintenance work orders and breakdown reporting; technician assignment and maintenance history; machine downtime tracking; lubrication and service schedules; equipment inspection checklists; spare-parts management; maintenance-cost tracking.'],
+    ['d1000000-0000-4000-8000-000000000064', 'Quality Assurance & Control', 'Incoming grain inspection, in-process quality checks and finished-product inspection; sampling management and laboratory test results; moisture and weight verification; packaging inspection; quality specifications; non-conformance reports and CAPA; product release / rejection; quality certificates; batch traceability and customer complaints.'],
+    ['d1000000-0000-4000-8000-000000000065', 'Packaging', 'Packaging-material inventory; packaging sizes and packaging-line management; packaging production orders; bag / packaging consumption; label management; batch-number generation; expiry / best-before dates; packed-quantity and damaged-packaging tracking; finished-product verification.'],
+    ['d1000000-0000-4000-8000-000000000066', 'Sales & Customer Management', 'Customer registration and categories; sales quotations and sales orders; price lists and customer-specific pricing; discounts and credit limits; credit sales and invoice generation; sales returns; customer complaints and statements; sales targets and salesperson management.'],
+    ['d1000000-0000-4000-8000-000000000067', 'Distribution & Delivery', 'Delivery orders and scheduling; vehicle and driver management; route planning; loading and dispatch verification; proof of delivery; delivery-status tracking; partial deliveries and returned goods; delivery-cost tracking and transporter management.'],
+    ['d1000000-0000-4000-8000-000000000068', 'Finance & Accounting', 'General ledger; accounts payable and receivable; supplier and customer payments; cash management and bank reconciliation; expenses and purchase costs; production costs and cost per kg / ton; product profitability; payroll integration; tax / VAT management; budgeting; profit & loss, balance sheet and cash-flow reporting.'],
+    ['d1000000-0000-4000-8000-000000000069', 'Human Resources & Workforce', 'Employee database and department management; shift management and attendance; overtime and leave; employee contracts; training records and skills / certifications; PPE issuance; performance management; casual-worker management; machine-operator assignment.'],
+    ['d1000000-0000-4000-8000-000000000070', 'Procurement & Supplier Management', 'Supplier registration and qualification; requests for quotation; purchase requisitions and purchase orders; approval workflows; goods received notes; supplier invoices; supplier performance and quality scoring; price comparison; contract management; procurement reports.'],
+    ['d1000000-0000-4000-8000-000000000071', 'IT, IoT & Integrations', 'PLC and industrial-controller integration; production and machine sensors; digital weighing scales and weighbridges; moisture meters; temperature / humidity and energy meters; production counters; packaging machines; barcode scanners and RFID; CCTV; the management dashboard and KPIs; and end-to-end supplier-to-customer traceability.'],
+  ] as const;
+  for (const [id, name, description] of millDepartments) {
+    await prisma.department.upsert({
+      where: { id },
+      update: {},
+      create: { id, companyId: milling.id, name, description },
+    });
+  }
+  // Milling starter policies are seeded further down, next to the C&F / WMS / CMS ones.
+
   await prisma.department.upsert({
     where: { id: 'd1000000-0000-4000-8000-000000000001' },
     update: {},
@@ -1057,6 +1128,25 @@ async function main() {
     if (!existing) {
       await prisma.companyPolicy.create({
         data: { id, companyId: 'a1000000-0000-4000-8000-000000000006', name, description, policyType, createdBy: mathias.id },
+      });
+    }
+  }
+
+  // Starter policies for the Milling subsidiary (3 September 2026).
+  for (const [id, name, description, policyType] of [
+    ['p1000000-0000-4000-8000-000000000040', 'Weighbridge Ticket Integrity', 'Every inbound and outbound load is weighed on a certified weighbridge; each ticket records gross, tare and net weight with the truck, driver, supplier / customer, product, lot and moisture grade. Duplicate tickets are blocked and every ticket is retained with a full audit trail.', 'Compliance'],
+    ['p1000000-0000-4000-8000-000000000041', 'Grain Acceptance & Moisture Limits', 'Incoming grain is graded for moisture, foreign matter and quality before acceptance; loads outside specification are rejected or discounted and recorded against the supplier. Accepted grain is assigned a lot / batch number at receiving.', 'Operations'],
+    ['p1000000-0000-4000-8000-000000000042', 'Milling Yield & Loss Tolerance', 'Each production order records raw-material consumption and finished output; milling yield and loss are calculated per batch and per shift, and losses above the agreed tolerance escalate to the Production Manager.', 'Operations'],
+    ['p1000000-0000-4000-8000-000000000043', 'Batch Traceability End to End', 'Every finished-goods batch is traceable back through packaging, milling, silo / warehouse, receiving and the supplier lot; a batch cannot be released for sale until its QC tests have passed.', 'Compliance'],
+    ['p1000000-0000-4000-8000-000000000044', 'Preventive Maintenance Compliance', 'Milling-line and packaging machines follow lubrication and service schedules; a machine with an overdue preventive-maintenance task is flagged and may be held from production by the Maintenance Manager.', 'Operations'],
+    ['p1000000-0000-4000-8000-000000000045', 'Food Safety & Product Release', 'Finished product is released only after finished-product inspection, moisture and weight verification and packaging inspection; non-conforming product raises a non-conformance report and a CAPA and is quarantined pending disposition.', 'Compliance'],
+  ] as const) {
+    const existing = await prisma.companyPolicy.findFirst({
+      where: { companyId: 'a1000000-0000-4000-8000-000000000007', name },
+    });
+    if (!existing) {
+      await prisma.companyPolicy.create({
+        data: { id, companyId: 'a1000000-0000-4000-8000-000000000007', name, description, policyType, createdBy: mathias.id },
       });
     }
   }

@@ -1,0 +1,37 @@
+<svg width="1600" height="420" viewBox="0 0 1600 420" role="img" aria-label="Morise Milling Ltd — grain milling" xmlns="http://www.w3.org/2000/svg">
+  <title>Morise Milling Ltd — subsidiary banner</title>
+  <defs>
+    <linearGradient id="mg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16283F"/><stop offset="0.6" stop-color="#1E3A5F"/><stop offset="1" stop-color="#2E5395"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="420" fill="url(#mg)"/>
+  <g transform="translate(1150 -90) scale(5)" opacity="0.08">
+    <path d="M32 94 V40 L64 74 L96 40 V94" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- grinding wheels + grain flow -->
+  <g opacity="0.5" fill="none" stroke="#D97706" stroke-width="3">
+    <circle cx="1230" cy="250" r="70"/>
+    <circle cx="1360" cy="250" r="70"/>
+    <line x1="1230" y1="180" x2="1230" y2="320"/>
+    <line x1="1160" y1="250" x2="1300" y2="250"/>
+    <line x1="1360" y1="180" x2="1360" y2="320"/>
+    <line x1="1290" y1="250" x2="1430" y2="250"/>
+  </g>
+  <g fill="#D97706" opacity="0.75">
+    <ellipse cx="1295" cy="118" rx="7" ry="12"/>
+    <ellipse cx="1315" cy="132" rx="7" ry="12"/>
+    <ellipse cx="1278" cy="140" rx="7" ry="12"/>
+    <ellipse cx="1305" cy="352" rx="6" ry="10"/>
+    <ellipse cx="1325" cy="366" rx="6" ry="10"/>
+  </g>
+  <g transform="translate(96 72)">
+    <rect x="0" y="0" width="76" height="76" rx="17" fill="#FFFFFF"/>
+    <path d="M19 57 V24 L38 45 L57 24 V57" fill="none" stroke="#1E3A5F" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M38 12 L47 21 L38 30 L29 21 Z" fill="#D97706"/>
+  </g>
+  <text x="192" y="118" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" letter-spacing="4" fill="#D97706">MORISE HOLDINGS LIMITED</text>
+  <text x="94" y="220" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="54" font-weight="800" fill="#FFFFFF">Morise Milling Ltd</text>
+  <text x="96" y="266" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.9)">Grain milling</text>
+  <text x="96" y="318" font-family="Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="500" fill="rgba(255,255,255,0.72)">From weighbridge to packed flour — traceable, every batch.</text>
+</svg>
