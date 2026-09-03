@@ -33,6 +33,11 @@ function toInvoiceResource(inv: any) {
     dueDate: inv.dueDate,
     paidAt: inv.paidAt,
     status: computeStatus(inv),
+    // Morise e-Stamp (3 September 2026) — set when the customer confirms
+    // receipt of the order's goods / services in good condition.
+    eStamped: !!inv.stampedAt,
+    stampNumber: inv.stampNumber ?? null,
+    stampedAt: inv.stampedAt ?? null,
     createdAt: inv.createdAt,
   };
 }
@@ -70,7 +75,31 @@ export class InvoicesService {
   async getForCustomer(customer: AuthenticatedCustomer, id: string) {
     const invoice = await this.prisma.invoice.findUnique({ where: { id }, include: { order: true } });
     if (!invoice || invoice.customerId !== customer.id) throw new NotFoundAppException('Invoice not found.');
-    return toInvoiceResource(invoice);
+    // Surface the delivery acknowledgement that produced (or would produce)
+    // the e-Stamp, so the storefront invoice view can explain it.
+    const delivery = await this.prisma.delivery.findUnique({
+      where: { orderId: invoice.orderId },
+      select: {
+        deliveryNumber: true,
+        status: true,
+        deliveredAt: true,
+        customerAckCondition: true,
+        customerAckAt: true,
+      },
+    });
+    return {
+      ...toInvoiceResource(invoice),
+      stampCondition: invoice.stampCondition ?? null,
+      delivery: delivery
+        ? {
+            deliveryNumber: delivery.deliveryNumber,
+            status: delivery.status,
+            deliveredAt: delivery.deliveredAt,
+            customerAckCondition: delivery.customerAckCondition,
+            customerAckAt: delivery.customerAckAt,
+          }
+        : null,
+    };
   }
 
   // GET /customer-portal/me — summary tiles (Home dashboard, My Account,
@@ -146,18 +175,29 @@ export class InvoicesService {
   async invoicePdfForCustomer(customer: AuthenticatedCustomer, id: string, lang = 'en'): Promise<Buffer> {
     const invoice = await this.getForCustomer(customer, id);
     const L = (s: string) => this.loc(s, lang);
+    const rows: (string | null)[][] = [
+      [L('Invoice Number'), invoice.invoiceNumber],
+      [L('Order Number'), invoice.orderNumber ?? ''],
+      [L('Amount'), `UGX ${invoice.amount}`],
+      [L('Due Date'), new Date(invoice.dueDate).toLocaleDateString()],
+      [L('Status'), L(invoice.status)],
+      [L('Paid At'), invoice.paidAt ? new Date(invoice.paidAt).toLocaleDateString() : '—'],
+    ];
+    if (invoice.eStamped) {
+      rows.push([L('Morise e-Stamp'), invoice.stampNumber ?? '']);
+      rows.push([
+        L('Receipt Confirmed'),
+        invoice.stampedAt ? new Date(invoice.stampedAt).toLocaleDateString() : '—',
+      ]);
+    }
     return buildPdfTable(
       `${L('Invoice')} ${invoice.invoiceNumber}`,
       `${customer.name} — ${L('Order')} ${invoice.orderNumber} — ${L('Status')}: ${L(invoice.status)}`,
       [L('Field'), L('Value')],
-      [
-        [L('Invoice Number'), invoice.invoiceNumber],
-        [L('Order Number'), invoice.orderNumber ?? ''],
-        [L('Amount'), `UGX ${invoice.amount}`],
-        [L('Due Date'), new Date(invoice.dueDate).toLocaleDateString()],
-        [L('Status'), L(invoice.status)],
-        [L('Paid At'), invoice.paidAt ? new Date(invoice.paidAt).toLocaleDateString() : '—'],
-      ],
+      rows,
+      invoice.eStamped && invoice.stampNumber
+        ? { stamp: { stampNumber: invoice.stampNumber, stampedAt: invoice.stampedAt ?? new Date(), recipientName: customer.name } }
+        : undefined,
     );
   }
 }

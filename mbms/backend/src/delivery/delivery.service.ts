@@ -5,7 +5,9 @@ import { AuthenticatedUser } from '../common/strategies/jwt.strategy';
 import { AuthenticatedCustomer } from '../customer-portal/common/customer-auth.types';
 import { hasGroupVisibility, isCompanyInScope } from '../common/scope.util';
 import { AuditService } from '../common/audit/audit.service';
+import { NotificationsService } from '../common/notifications/notifications.service';
 import {
+  AcknowledgeDeliveryDto,
   AdvanceDeliveryStatusDto,
   AssignDriverDto,
   CancelDeliveryDto,
@@ -30,6 +32,7 @@ export class DeliveryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ---- scope helpers -------------------------------------------------------
@@ -86,12 +89,13 @@ export class DeliveryService {
       ...d.events.map((e) => e.recordedBy),
       d.createdBy,
     ]);
+    // The delivery may carry an invoiceId directly (kind = invoice) or,
+    // for a goods delivery, the invoice is the one for its order.
     let invoice = null as any;
     if (d.invoiceId) {
-      invoice = await this.prisma.invoice.findUnique({
-        where: { id: d.invoiceId },
-        select: { id: true, invoiceNumber: true, amount: true, dueDate: true, paidAt: true },
-      });
+      invoice = await this.prisma.invoice.findUnique({ where: { id: d.invoiceId } });
+    } else if (d.orderId) {
+      invoice = await this.prisma.invoice.findUnique({ where: { orderId: d.orderId } });
     }
     return {
       ...this.toResource(d, customers, companies, orders),
@@ -103,6 +107,9 @@ export class DeliveryService {
             amount: invoice.amount.toString(),
             dueDate: invoice.dueDate,
             paidAt: invoice.paidAt,
+            stampedAt: invoice.stampedAt,
+            stampNumber: invoice.stampNumber,
+            stampCondition: invoice.stampCondition,
           }
         : null,
       events: d.events.map((e) => ({
@@ -528,6 +535,16 @@ export class DeliveryService {
       include: { driver: true, events: { orderBy: { createdAt: 'asc' } } },
     });
     if (!d) return null;
+    // Once the customer has confirmed receipt in good condition, surface the
+    // Morise e-Stamp that was placed on the order's invoice.
+    let eStamp = null as null | { invoiceNumber: string; stampNumber: string | null; stampedAt: Date | null };
+    if (d.customerAckCondition === 'good') {
+      const inv = await this.prisma.invoice.findUnique({
+        where: { orderId },
+        select: { invoiceNumber: true, stampNumber: true, stampedAt: true },
+      });
+      if (inv) eStamp = { invoiceNumber: inv.invoiceNumber, stampNumber: inv.stampNumber, stampedAt: inv.stampedAt };
+    }
     return {
       id: d.id,
       deliveryNumber: d.deliveryNumber,
@@ -544,6 +561,13 @@ export class DeliveryService {
       failureReason: d.failureReason,
       proofType: d.proofType,
       recipientName: d.recipientName,
+      // Customer acknowledgement of receipt.
+      customerAckCondition: d.customerAckCondition,
+      customerAckAt: d.customerAckAt,
+      customerAckNote: d.customerAckNote,
+      exceptionOpenedAt: d.exceptionOpenedAt,
+      canAcknowledge: d.status === 'delivered' && !d.customerAckAt,
+      eStamp,
       driver: d.driver
         ? { name: d.driver.name, phone: d.driver.phone, vehicleReg: d.driver.vehicleReg, vehicleType: d.driver.vehicleType }
         : null,
@@ -555,6 +579,138 @@ export class DeliveryService {
         createdAt: e.createdAt,
       })),
     };
+  }
+
+  // POST /customer-portal/orders/:id/delivery/acknowledge — the customer
+  // confirms (or reports a problem with) a completed delivery. A "good"
+  // acknowledgement automatically issues a Morise e-Stamp on the order's
+  // invoice; any other condition opens a delivery exception and issues no
+  // stamp. (Doc 22 addendum — "Customer Acknowledgement of Delivery & the
+  // Automatic Morise-Stamped Invoice"; specified as Update 66, built here.)
+  async acknowledgeByCustomer(customer: AuthenticatedCustomer, orderId: string, dto: AcknowledgeDeliveryDto) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order || order.customerId !== customer.id) {
+      throw new NotFoundAppException('Order not found.');
+    }
+    const d = await this.prisma.delivery.findUnique({ where: { orderId } });
+    if (!d) throw new NotFoundAppException('This order has no delivery to confirm yet.');
+    if (d.status !== 'delivered') {
+      throw new ConflictAppException('You can confirm receipt only once the delivery has been completed.');
+    }
+    if (d.customerAckAt) {
+      throw new ConflictAppException('This delivery has already been confirmed.');
+    }
+
+    const good = dto.condition === 'good';
+    const note = dto.note?.trim() || null;
+    const recipientName = dto.recipientName?.trim() || d.recipientName || customer.name;
+    const now = new Date();
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.delivery.update({
+        where: { id: d.id },
+        data: {
+          customerAckCondition: dto.condition,
+          customerAckAt: now,
+          customerAckNote: note,
+          customerAckBy: customer.id,
+          exceptionOpenedAt: good ? null : now,
+          events: {
+            create: {
+              status: 'delivered',
+              note: good
+                ? `Customer confirmed receipt in good condition${recipientName ? ` (${recipientName})` : ''}.`
+                : `Customer reported "${dto.condition.replace(/_/g, ' ')}"${note ? `: ${note}` : ''}.`,
+              recordedBy: customer.id,
+            },
+          },
+        },
+      });
+
+      let stamped: any = null;
+      if (good) {
+        const invoice = d.invoiceId
+          ? await tx.invoice.findUnique({ where: { id: d.invoiceId } })
+          : await tx.invoice.findUnique({ where: { orderId } });
+        if (invoice && !invoice.stampedAt) {
+          stamped = await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              stampedAt: now,
+              stampNumber: await this.nextStampNumber(tx),
+              stampCondition: 'good',
+            },
+          });
+        } else if (invoice?.stampedAt) {
+          stamped = invoice;
+        }
+      }
+      return { stamped };
+    });
+
+    await this.auditService.record({
+      eventType: good ? 'invoice.estamp.issued' : 'delivery.exception_opened',
+      sourceService: 'delivery-service',
+      userId: null,
+      companyId: d.originCompanyId,
+      entityType: good ? 'invoice' : 'delivery',
+      entityId: good ? (result.stamped?.id ?? d.id) : d.id,
+      action: good ? 'approve' : 'update',
+      newValue: good
+        ? { stampNumber: result.stamped?.stampNumber, orderId, deliveryNumber: d.deliveryNumber, acknowledgedByCustomer: customer.id }
+        : { condition: dto.condition, note, deliveryNumber: d.deliveryNumber, acknowledgedByCustomer: customer.id },
+    });
+
+    // Best-effort staff notification to the selling subsidiary's order team.
+    try {
+      const recipients = await this.notifications.findUsersWithPermissionInCompany(
+        d.originCompanyId,
+        'sales.order.manage',
+        'sales.order.viewAll',
+      );
+      await this.notifications.notifyUsers(recipients, {
+        companyId: d.originCompanyId,
+        type: good ? 'delivery.acknowledged' : 'delivery.exception',
+        title: good
+          ? `Delivery ${d.deliveryNumber} confirmed by the customer`
+          : `Delivery ${d.deliveryNumber} — customer reported a problem`,
+        message: good
+          ? `The customer confirmed receipt in good condition. Invoice ${result.stamped?.invoiceNumber ?? ''} was e-stamped${result.stamped?.stampNumber ? ` (${result.stamped.stampNumber})` : ''}.`
+          : `Reported "${dto.condition.replace(/_/g, ' ')}"${note ? `: ${note}` : ''}. A delivery exception is open — no e-stamp was issued.`,
+        entityType: 'delivery',
+        entityId: d.id,
+      });
+    } catch {
+      /* notifications are best-effort */
+    }
+
+    return {
+      condition: dto.condition,
+      acknowledgedAt: now,
+      exceptionOpened: !good,
+      eStamp: result.stamped
+        ? {
+            invoiceId: result.stamped.id,
+            invoiceNumber: result.stamped.invoiceNumber,
+            stampNumber: result.stamped.stampNumber,
+            stampedAt: result.stamped.stampedAt,
+          }
+        : null,
+      delivery: await this.getForCustomerOrder(customer, orderId),
+    };
+  }
+
+  // MOR-ESTAMP-YYYY-NNNNNN — a running count of stamped invoices, with a
+  // short retry to survive a race on the unique index.
+  private async nextStampNumber(tx: any): Promise<string> {
+    const year = new Date().getFullYear();
+    const base = await tx.invoice.count({ where: { stampNumber: { not: null } } });
+    for (let i = 1; i <= 6; i++) {
+      const candidate = `MOR-ESTAMP-${year}-${String(base + i).padStart(6, '0')}`;
+      const clash = await tx.invoice.findUnique({ where: { stampNumber: candidate } });
+      if (!clash) return candidate;
+    }
+    return `MOR-ESTAMP-${year}-${Date.now().toString().slice(-8)}`;
   }
 
   // ---- internals -------------------------------------------------------------
@@ -646,6 +802,10 @@ export class DeliveryService {
       proofType: d.proofType,
       proofReference: d.proofReference,
       recipientName: d.recipientName,
+      customerAckCondition: d.customerAckCondition ?? null,
+      customerAckAt: d.customerAckAt ?? null,
+      customerAckNote: d.customerAckNote ?? null,
+      exceptionOpenedAt: d.exceptionOpenedAt ?? null,
       eventCount: d._count?.events,
       createdAt: d.createdAt,
       updatedAt: d.updatedAt,

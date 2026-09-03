@@ -288,6 +288,20 @@ export const en = {
   'orders.step.packed': 'Packed',
   'orders.step.out_for_delivery': 'Out for Delivery',
   'orders.step.delivered': 'Delivered',
+  // Delivery acknowledgement & the automatic Morise e-Stamp
+  'orders.ack.prompt': 'Did everything arrive in good condition?',
+  'orders.ack.deliveredOn': 'Delivered {date} by {driver}.',
+  'orders.ack.confirmBtn': 'Yes — confirm receipt',
+  'orders.ack.problemBtn': 'Report a problem',
+  'orders.ack.submitReport': 'Submit report',
+  'orders.ack.notePlaceholder': 'Tell us what was wrong (optional)',
+  'orders.ack.failed': 'Could not submit — please try again.',
+  'orders.ack.confirmed': 'Receipt confirmed on {date}.',
+  'orders.ack.estampAdded': 'A Morise e-Stamp ({number}) was added to invoice {invoice}.',
+  'orders.ack.reported': 'You reported "{condition}" on {date}. A delivery exception is open — our team will be in touch. No e-Stamp was issued.',
+  'orders.ack.condition.damaged': 'Goods arrived damaged',
+  'orders.ack.condition.incomplete': 'Delivery was incomplete',
+  'orders.ack.condition.not_received': 'Goods were not received',
 
   // Invoices
   'invoices.heading': 'Invoices & Account Statement',
@@ -303,6 +317,8 @@ export const en = {
   'invoices.dueDate': 'Due Date',
   'invoices.downloadPdf': 'Download PDF',
   'invoices.loadFailed': 'Failed to load invoices.',
+  'invoices.estamp.badge': 'Morise e-Stamp',
+  'invoices.estamp.tooltip': 'Receipt confirmed by you — Morise e-Stamp {number}',
 
   // Make payment
   'payment.crumb': 'Invoices & Payments / Pay',

@@ -213,3 +213,22 @@ export class CancelDeliveryDto {
   @MaxLength(500)
   reason?: string;
 }
+
+// Customer acknowledgement of a completed delivery (3 September 2026).
+// POST /api/v1/customer-portal/orders/:id/delivery/acknowledge
+export const DELIVERY_ACK_CONDITIONS = ['good', 'damaged', 'incomplete', 'not_received'] as const;
+
+export class AcknowledgeDeliveryDto {
+  @IsIn(DELIVERY_ACK_CONDITIONS)
+  condition: (typeof DELIVERY_ACK_CONDITIONS)[number];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  note?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  recipientName?: string;
+}

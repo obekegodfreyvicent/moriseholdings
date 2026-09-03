@@ -562,6 +562,10 @@ textarea.sf-input:focus {
   background: var(--sf-success-bg);
   color: var(--sf-success);
 }
+.sf-banner-warning {
+  background: var(--sf-warning-bg, #FBF0DD);
+  color: var(--sf-warning, #B26B00);
+}
 .sf-banner-info {
   background: var(--sf-accent-soft, #EEF4FF);
   color: var(--sf-accent, #2E5395);

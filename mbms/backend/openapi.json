@@ -11080,6 +11080,36 @@
         }
       }
     },
+    "/api/v1/customer-portal/orders/{id}/delivery/acknowledge": {
+      "post": {
+        "operationId": "CustomerOrdersController_acknowledgeDelivery",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcknowledgeDeliveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/customer-portal/orders/{id}/cancel": {
       "post": {
         "operationId": "CustomerOrdersController_cancel",
@@ -16479,6 +16509,31 @@
         },
         "required": [
           "items"
+        ]
+      },
+      "AcknowledgeDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "type": "string",
+            "enum": [
+              "good",
+              "damaged",
+              "incomplete",
+              "not_received"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "recipientName": {
+            "type": "string",
+            "maxLength": 160
+          }
+        },
+        "required": [
+          "condition"
         ]
       },
       "CreatePaymentDto": {

@@ -2624,6 +2624,16 @@ model Invoice {
   dueDate        DateTime  @map("due_date") @db.Date
   paidAt         DateTime? @map("paid_at")
   journalEntryId String?   @map("journal_entry_id")
+  // Morise e-Stamp (3 September 2026): set automatically when the customer
+  // confirms, through the customer portal, that they received the order's
+  // goods / services in good condition (POST
+  // /customer-portal/orders/:id/delivery/acknowledge with condition
+  // "good"). `stampNumber` is MOR-ESTAMP-YYYY-NNNNNN; `stampCondition` is
+  // always "good" when stamped. A damaged / incomplete / not-received
+  // acknowledgement issues no stamp and opens a delivery exception instead.
+  stampedAt      DateTime? @map("stamped_at")
+  stampNumber    String?   @unique @map("stamp_number") @db.VarChar(40)
+  stampCondition String?   @map("stamp_condition") @db.VarChar(20)
   createdAt      DateTime  @default(now()) @map("created_at")
 
   order              Order               @relation(fields: [orderId], references: [id])
@@ -3033,6 +3043,17 @@ model Delivery {
   proofType      DeliveryProofType @default(none) @map("proof_type")
   proofReference String?           @map("proof_reference") // OTP entered, signature-capture note, photo caption
   recipientName  String?           @map("recipient_name") @db.VarChar(160)
+
+  // Customer acknowledgement of receipt (3 September 2026). Set through the
+  // customer portal after the delivery is `delivered`. `condition` is one
+  // of good / damaged / incomplete / not_received: "good" triggers the
+  // automatic Morise e-Stamp on the order's invoice; the others set
+  // `exceptionOpenedAt` and raise a staff notification, with no stamp.
+  customerAckCondition String?   @map("customer_ack_condition") @db.VarChar(20)
+  customerAckAt        DateTime? @map("customer_ack_at")
+  customerAckNote      String?   @map("customer_ack_note")
+  customerAckBy        String?   @map("customer_ack_by") // logical ref -> customers.id
+  exceptionOpenedAt    DateTime? @map("exception_opened_at")
 
   createdBy String   @map("created_by")
   createdAt DateTime @default(now()) @map("created_at")

@@ -84,7 +84,18 @@ export function InvoicesPage() {
             <tbody>
               {invoices.map((i) => (
                 <tr key={i.id}>
-                  <td>{i.invoiceNumber}</td>
+                  <td>
+                    {i.invoiceNumber}
+                    {i.eStamped && (
+                      <span
+                        className="sf-badge sf-badge-success"
+                        title={t('invoices.estamp.tooltip', { number: i.stampNumber || '' })}
+                        style={{ marginLeft: 8, fontSize: 11 }}
+                      >
+                        {t('invoices.estamp.badge')}
+                      </span>
+                    )}
+                  </td>
                   <td>{new Date(i.createdAt).toLocaleDateString()}</td>
                   <td>{new Date(i.dueDate).toLocaleDateString()}</td>
                   <td>{money(i.amount)}</td>

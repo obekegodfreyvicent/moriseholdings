@@ -3569,6 +3569,74 @@ async function main() {
   } // end alreadySeededOrders guard
   // ================== End Customer Storefront (Sprint 16) ====================
 
+  // Morise e-Stamp demo (3 September 2026): a completed delivery for one of
+  // Highland Traders' delivered orders, awaiting the customer's
+  // confirmation of receipt — so the flow "confirm receipt in good
+  // condition → automatic Morise e-Stamp on the invoice" can be run live
+  // from the storefront. Left un-acknowledged on purpose. Idempotent (guards
+  // on an existing delivery for the order); runs even on a re-seed.
+  {
+    const ackOrder = await prisma.order.findFirst({
+      where: { companyId: agro.id, customerId: highlandTradersPortal.id, status: 'delivered' },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (ackOrder && !(await prisma.delivery.findUnique({ where: { orderId: ackOrder.id } }))) {
+      const ackInvoice = await prisma.invoice.findUnique({ where: { orderId: ackOrder.id } });
+      let estampDriver = await prisma.deliveryDriver.findFirst({
+        where: { companyId: logistics.id, name: 'Julius Ssemwanga' },
+      });
+      if (!estampDriver) {
+        estampDriver = await prisma.deliveryDriver.create({
+          data: {
+            companyId: logistics.id,
+            name: 'Julius Ssemwanga',
+            phone: '+256 772 004 118',
+            licenseNumber: 'DL-UG-4471',
+            vehicleReg: 'UBK 214J',
+            vehicleType: 'van',
+          },
+        });
+      }
+      const dCount = await prisma.delivery.count({ where: { companyId: logistics.id } });
+      const deliveredAt = new Date('2026-05-05T14:30:00Z');
+      await prisma.delivery.create({
+        data: {
+          deliveryNumber: `DEL-2026-${String(dCount + 1).padStart(4, '0')}`,
+          companyId: logistics.id,
+          originCompanyId: agro.id,
+          customerId: highlandTradersPortal.id,
+          orderId: ackOrder.id,
+          invoiceId: ackInvoice?.id ?? null,
+          kind: 'goods',
+          status: 'delivered',
+          driverId: estampDriver.id,
+          dropAddress: mbaleAddress.addressLine,
+          dropContactName: 'Highland Traders Ltd',
+          scheduledDate: new Date('2026-05-05'),
+          deliveryFee: 30_000,
+          assignedAt: new Date('2026-05-04T09:00:00Z'),
+          pickedUpAt: new Date('2026-05-05T09:30:00Z'),
+          inTransitAt: new Date('2026-05-05T10:00:00Z'),
+          deliveredAt,
+          proofType: 'signature',
+          proofReference: 'Signed at the store gate',
+          recipientName: 'Store Supervisor',
+          createdBy: mathias.id,
+          events: {
+            create: [
+              { status: 'pending', note: 'Delivery created', recordedBy: mathias.id, createdAt: new Date('2026-05-04T08:00:00Z') },
+              { status: 'assigned', note: 'Assigned to Julius Ssemwanga (UBK 214J)', recordedBy: mathias.id, createdAt: new Date('2026-05-04T09:00:00Z') },
+              { status: 'picked_up', note: 'Collected from Kira HQ', recordedBy: mathias.id, createdAt: new Date('2026-05-05T09:30:00Z') },
+              { status: 'in_transit', note: 'En route to Mbale', recordedBy: mathias.id, createdAt: new Date('2026-05-05T10:00:00Z') },
+              { status: 'delivered', note: 'Received by Store Supervisor — signature proof', recordedBy: mathias.id, createdAt: deliveredAt },
+            ],
+          },
+        },
+      });
+      console.log(`  1 completed delivery for ${ackOrder.orderNumber} awaiting customer confirmation (Morise e-Stamp demo).`);
+    }
+  }
+
   console.log('Seeding starter expense claims for Morise Agro Ltd (Sprint 9)...');
   // Three claims at three different stages of the workflow, deliberately
   // submitted/approved by different scoped demo users (Kintu, Namuli, Kato,

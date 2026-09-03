@@ -7,6 +7,7 @@ import { OrdersService } from '../../sales/orders.service';
 import { DeliveryService } from '../../delivery/delivery.service';
 import { CreateOrderDto } from '../../sales/dto/create-order.dto';
 import { CancelOrderDto } from '../../sales/dto/cancel-order.dto';
+import { AcknowledgeDeliveryDto } from '../../delivery/dto/delivery.dto';
 import { ContentTranslationService } from '../../common/translation/content-translation.service';
 
 // Base path /api/v1/customer-portal/orders.
@@ -65,6 +66,18 @@ export class CustomerOrdersController {
   @Get(':id/delivery')
   delivery(@CurrentCustomer() customer: AuthenticatedCustomer, @Param('id', ParseUUIDPipe) id: string) {
     return this.deliveryService.getForCustomerOrder(customer, id);
+  }
+
+  // Customer confirms receipt of a completed delivery. condition = "good"
+  // automatically issues a Morise e-Stamp on the order's invoice; any other
+  // condition opens a delivery exception and issues no stamp.
+  @Post(':id/delivery/acknowledge')
+  acknowledgeDelivery(
+    @CurrentCustomer() customer: AuthenticatedCustomer,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AcknowledgeDeliveryDto,
+  ) {
+    return this.deliveryService.acknowledgeByCustomer(customer, id, dto);
   }
 
   @Post(':id/cancel')

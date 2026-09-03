@@ -12,8 +12,14 @@ export function OrdersPage() {
   const [orders, setOrders] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [delivery, setDelivery] = useState(null);
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [ackBusy, setAckBusy] = useState(false);
+  const [ackError, setAckError] = useState(null);
+  const [problemMode, setProblemMode] = useState(false);
+  const [problemCondition, setProblemCondition] = useState('damaged');
+  const [problemNote, setProblemNote] = useState('');
 
   // Group catalogue (29 August 2026): a multi-subsidiary cart is placed as
   // one order per company, so `justPlaced` can be a list of order numbers.
@@ -36,8 +42,34 @@ export function OrdersPage() {
 
   useEffect(() => {
     if (!selectedId) return;
+    setDelivery(null);
+    setProblemMode(false);
+    setProblemNote('');
+    setAckError(null);
     apiRequest(`/customer-portal/orders/${selectedId}`).then(setDetail);
+    apiRequest(`/customer-portal/orders/${selectedId}/delivery`)
+      .then(setDelivery)
+      .catch(() => setDelivery(null));
   }, [selectedId]);
+
+  async function submitAck(condition, note) {
+    setAckBusy(true);
+    setAckError(null);
+    try {
+      await apiRequest(`/customer-portal/orders/${selectedId}/delivery/acknowledge`, {
+        method: 'POST',
+        body: { condition, note: note || undefined },
+      });
+      const fresh = await apiRequest(`/customer-portal/orders/${selectedId}/delivery`);
+      setDelivery(fresh);
+      setProblemMode(false);
+      setProblemNote('');
+    } catch (err) {
+      setAckError(err.apiError?.message || t('orders.ack.failed'));
+    } finally {
+      setAckBusy(false);
+    }
+  }
 
   async function reorderLast() {
     if (!orders || orders.length === 0) return;
@@ -176,6 +208,102 @@ export function OrdersPage() {
                     ))}
                   </tbody>
                 </table>
+
+                {delivery && delivery.status === 'delivered' && (
+                  <div className="sf-card" style={{ marginTop: 14, background: 'var(--sf-neutral-bg)' }}>
+                    {delivery.customerAckAt ? (
+                      delivery.customerAckCondition === 'good' ? (
+                        <div className="sf-banner sf-banner-success">
+                          {t('orders.ack.confirmed', {
+                            date: new Date(delivery.customerAckAt).toLocaleDateString(),
+                          })}
+                          {delivery.eStamp && delivery.eStamp.stampNumber && (
+                            <>
+                              {' '}
+                              {t('orders.ack.estampAdded', {
+                                number: delivery.eStamp.stampNumber,
+                                invoice: delivery.eStamp.invoiceNumber,
+                              })}
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="sf-banner sf-banner-warning">
+                          {t('orders.ack.reported', {
+                            condition: t(`orders.ack.condition.${delivery.customerAckCondition}`),
+                            date: new Date(delivery.customerAckAt).toLocaleDateString(),
+                          })}
+                        </div>
+                      )
+                    ) : (
+                      <>
+                        <strong>{t('orders.ack.prompt')}</strong>
+                        <div style={{ fontSize: 13, color: 'var(--sf-text-muted)', margin: '4px 0 10px' }}>
+                          {t('orders.ack.deliveredOn', {
+                            date: delivery.deliveredAt ? new Date(delivery.deliveredAt).toLocaleDateString() : '—',
+                            driver: delivery.driver?.name || '—',
+                          })}
+                        </div>
+                        {ackError && <div className="sf-banner sf-banner-error">{ackError}</div>}
+                        {!problemMode ? (
+                          <div className="sf-row" style={{ gap: 10 }}>
+                            <button
+                              className="sf-btn sf-btn-primary"
+                              disabled={ackBusy}
+                              onClick={() => submitAck('good')}
+                            >
+                              {t('orders.ack.confirmBtn')}
+                            </button>
+                            <button
+                              className="sf-btn sf-btn-secondary"
+                              disabled={ackBusy}
+                              onClick={() => setProblemMode(true)}
+                            >
+                              {t('orders.ack.problemBtn')}
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <select
+                              className="sf-select"
+                              style={{ width: '100%', marginBottom: 8 }}
+                              value={problemCondition}
+                              onChange={(e) => setProblemCondition(e.target.value)}
+                            >
+                              <option value="damaged">{t('orders.ack.condition.damaged')}</option>
+                              <option value="incomplete">{t('orders.ack.condition.incomplete')}</option>
+                              <option value="not_received">{t('orders.ack.condition.not_received')}</option>
+                            </select>
+                            <textarea
+                              className="sf-input"
+                              rows={2}
+                              style={{ width: '100%', marginBottom: 8 }}
+                              placeholder={t('orders.ack.notePlaceholder')}
+                              value={problemNote}
+                              onChange={(e) => setProblemNote(e.target.value)}
+                            />
+                            <div className="sf-row" style={{ gap: 10 }}>
+                              <button
+                                className="sf-btn sf-btn-primary"
+                                disabled={ackBusy}
+                                onClick={() => submitAck(problemCondition, problemNote.trim())}
+                              >
+                                {t('orders.ack.submitReport')}
+                              </button>
+                              <button
+                                className="sf-btn sf-btn-secondary"
+                                disabled={ackBusy}
+                                onClick={() => setProblemMode(false)}
+                              >
+                                {t('common.cancel')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {(detail.status === 'placed' || detail.status === 'confirmed') && (
                   <button
