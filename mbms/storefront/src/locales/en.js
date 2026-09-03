@@ -293,7 +293,8 @@ export const en = {
   'orders.step.delivered': 'Delivered',
   // Delivery acknowledgement & the automatic Morise e-Stamp
   'orders.ack.prompt': 'Did everything arrive in good condition?',
-  'orders.ack.deliveredOn': 'Delivered {date} by {driver}.',
+  'orders.ack.deliveredOn': 'Marked delivered on {date}.',
+  'orders.ack.byDriver': 'Delivered by {driver}.',
   'orders.ack.confirmBtn': 'Yes — confirm receipt',
   'orders.ack.problemBtn': 'Report a problem',
   'orders.ack.submitReport': 'Submit report',

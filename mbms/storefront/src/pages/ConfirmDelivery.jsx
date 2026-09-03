@@ -6,16 +6,18 @@ import { apiRequest, downloadFile } from '../lib/api';
 import { money } from '../lib/format';
 
 // Dedicated "confirm your delivery" page (3 September 2026) — a focused
-// confirmation button / link the customer can be sent to (from the Home
-// prompt, an Orders-row link, or a shared /orders/:id/confirm URL). On a
-// "received in good condition" confirmation MBMS automatically issues a
-// Morise e-Stamp on the order's invoice.
+// confirmation button / link the customer is sent to (from the Home prompt,
+// an Orders-row link, or a shared /orders/:id/confirm URL). It appears for
+// any order an administrator has marked `delivered`; a Morise Logistics
+// delivery record is not required. On a "received in good condition"
+// confirmation MBMS automatically issues a Morise e-Stamp on the order's
+// invoice.
 export function ConfirmDeliveryPage() {
   const { id } = useParams();
   const t = useT();
   const navigate = useNavigate();
-  const [order, setOrder] = useState(null);
-  const [delivery, setDelivery] = useState(undefined); // undefined = loading, null = none
+  const [order, setOrder] = useState(undefined); // undefined = loading, null = not found
+  const [delivery, setDelivery] = useState(null); // optional Morise Logistics record
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
@@ -23,11 +25,14 @@ export function ConfirmDeliveryPage() {
   const [condition, setCondition] = useState('damaged');
   const [note, setNote] = useState('');
 
+  function loadOrder() {
+    return apiRequest(`/customer-portal/orders/${id}`).then(setOrder).catch(() => setOrder(null));
+  }
+
   useEffect(() => {
-    apiRequest(`/customer-portal/orders/${id}`).then(setOrder).catch(() => setOrder(null));
-    apiRequest(`/customer-portal/orders/${id}/delivery`)
-      .then((d) => setDelivery(d))
-      .catch(() => setDelivery(null));
+    loadOrder();
+    apiRequest(`/customer-portal/orders/${id}/delivery`).then(setDelivery).catch(() => setDelivery(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function submit(cond, text) {
@@ -39,8 +44,7 @@ export function ConfirmDeliveryPage() {
         body: { condition: cond, note: text || undefined },
       });
       setResult(res);
-      const fresh = await apiRequest(`/customer-portal/orders/${id}/delivery`);
-      setDelivery(fresh);
+      await loadOrder();
     } catch (err) {
       setError(err.apiError?.message || t('orders.ack.failed'));
     } finally {
@@ -48,8 +52,17 @@ export function ConfirmDeliveryPage() {
     }
   }
 
-  const alreadyDone = delivery && delivery.customerAckAt;
-  const canConfirm = delivery && delivery.status === 'delivered' && !delivery.customerAckAt;
+  const confirmedGood =
+    (result && result.eStamp) ||
+    (order && order.customerReceiptConfirmedAt && order.customerReceiptCondition === 'good');
+  const confirmedProblem =
+    (result && result.exceptionOpened) ||
+    (order && order.customerReceiptConfirmedAt && order.customerReceiptCondition && order.customerReceiptCondition !== 'good');
+  const canConfirm = order && order.status === 'delivered' && !order.customerReceiptConfirmedAt;
+  const stampNumber =
+    (result && result.eStamp && result.eStamp.stampNumber) || (order && order.invoice && order.invoice.stampNumber);
+  const stampInvoiceId =
+    (result && result.eStamp && result.eStamp.invoiceId) || (order && order.invoice && order.invoice.id);
 
   return (
     <Layout>
@@ -70,68 +83,52 @@ export function ConfirmDeliveryPage() {
             <strong>{t('confirm.orderLine', { order: order.orderNumber, company: order.companyName || '—' })}</strong>
             <span>{money(order.totalAmount)}</span>
           </div>
-          {delivery && delivery.deliveredAt && (
+          {order.deliveredAt && (
             <div style={{ fontSize: 13, color: 'var(--sf-text-muted)', marginTop: 4 }}>
-              {t('orders.ack.deliveredOn', {
-                date: new Date(delivery.deliveredAt).toLocaleDateString(),
-                driver: delivery.driver?.name || '—',
-              })}
+              {t('orders.ack.deliveredOn', { date: new Date(order.deliveredAt).toLocaleDateString() })}
+              {delivery?.driver?.name ? ` ${t('orders.ack.byDriver', { driver: delivery.driver.name })}` : ''}
             </div>
           )}
         </div>
       )}
 
       <div className="sf-card">
-        {delivery === undefined ? (
+        {order === undefined ? (
           <div className="sf-loading">{t('common.loading')}</div>
-        ) : !delivery || delivery.status !== 'delivered' ? (
+        ) : order === null || order.status !== 'delivered' ? (
           <div className="sf-empty">{t('confirm.nothingToConfirm')}</div>
-        ) : result && result.eStamp ? (
+        ) : confirmedGood ? (
           <div>
             <div className="sf-banner sf-banner-success">
-              {t('orders.ack.confirmed', { date: new Date().toLocaleDateString() })}{' '}
-              {t('orders.ack.estampAdded', {
-                number: result.eStamp.stampNumber,
-                invoice: result.eStamp.invoiceNumber,
+              {t('orders.ack.confirmed', {
+                date: new Date(order.customerReceiptConfirmedAt || Date.now()).toLocaleDateString(),
+              })}
+              {stampNumber && ' ' + t('orders.ack.estampAdded', {
+                number: stampNumber,
+                invoice: order.invoice ? order.invoice.invoiceNumber : '',
               })}
             </div>
             <div className="sf-row" style={{ gap: 10 }}>
-              <button
-                className="sf-btn sf-btn-secondary"
-                onClick={() => downloadFile(`/customer-portal/invoices/${result.eStamp.invoiceId}/pdf`)}
-              >
-                {t('confirm.downloadStamped')}
-              </button>
+              {stampInvoiceId && (
+                <button
+                  className="sf-btn sf-btn-secondary"
+                  onClick={() => downloadFile(`/customer-portal/invoices/${stampInvoiceId}/pdf`)}
+                >
+                  {t('confirm.downloadStamped')}
+                </button>
+              )}
               <button className="sf-btn sf-btn-primary" onClick={() => navigate('/orders')}>
                 {t('confirm.backToOrders')}
               </button>
             </div>
           </div>
-        ) : (result && result.exceptionOpened) || (alreadyDone && delivery.customerAckCondition !== 'good') ? (
+        ) : confirmedProblem ? (
           <div>
             <div className="sf-banner sf-banner-warning">
               {t('orders.ack.reported', {
-                condition: t(`orders.ack.condition.${delivery.customerAckCondition || condition}`),
-                date: new Date(delivery.customerAckAt || Date.now()).toLocaleDateString(),
+                condition: t(`orders.ack.condition.${order.customerReceiptCondition || condition}`),
+                date: new Date(order.customerReceiptConfirmedAt || Date.now()).toLocaleDateString(),
               })}
-            </div>
-            <button className="sf-btn sf-btn-primary" onClick={() => navigate('/orders')}>
-              {t('confirm.backToOrders')}
-            </button>
-          </div>
-        ) : alreadyDone ? (
-          <div>
-            <div className="sf-banner sf-banner-success">
-              {t('orders.ack.confirmed', { date: new Date(delivery.customerAckAt).toLocaleDateString() })}
-              {delivery.eStamp && delivery.eStamp.stampNumber && (
-                <>
-                  {' '}
-                  {t('orders.ack.estampAdded', {
-                    number: delivery.eStamp.stampNumber,
-                    invoice: delivery.eStamp.invoiceNumber,
-                  })}
-                </>
-              )}
             </div>
             <button className="sf-btn sf-btn-primary" onClick={() => navigate('/orders')}>
               {t('confirm.backToOrders')}

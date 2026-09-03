@@ -3637,6 +3637,59 @@ async function main() {
     }
   }
 
+  // Customer receipt confirmation (3 September 2026): stamp delivered_at on
+  // every delivered order, and pre-confirm (good) + e-stamp the ones that
+  // do NOT have a live Morise Logistics delivery record — so the demo shows
+  // several already-stamped invoices plus exactly one order still awaiting
+  // the customer's confirmation (ORD-2026-0001, which carries DEL-2026-0001).
+  {
+    const deliveredOrders = await prisma.order.findMany({
+      where: { customerId: highlandTradersPortal.id, status: 'delivered' },
+      include: { invoice: true },
+    });
+    // First pass: an invoice must not carry an e-Stamp unless its order's
+    // receipt is confirmed — clear any stray stamp on an unconfirmed order
+    // (keeps a re-seed after ad-hoc testing consistent).
+    for (const o of deliveredOrders) {
+      const hasDelivery = await prisma.delivery.findUnique({ where: { orderId: o.id } });
+      if (hasDelivery && !o.customerReceiptConfirmedAt && o.invoice?.stampedAt) {
+        await prisma.invoice.update({
+          where: { id: o.invoice.id },
+          data: { stampedAt: null, stampNumber: null, stampCondition: null },
+        });
+      }
+    }
+    let stampSeq = await prisma.invoice.count({ where: { stampNumber: { not: null } } });
+    let confirmed = 0;
+    for (const o of deliveredOrders) {
+      const hasDelivery = await prisma.delivery.findUnique({ where: { orderId: o.id } });
+      const deliveredAt = o.deliveredAt ?? new Date(o.createdAt.getTime() + 3 * 86_400_000);
+      const confirmAt = new Date(o.createdAt.getTime() + 6 * 86_400_000);
+      const preConfirm = !hasDelivery && !o.customerReceiptConfirmedAt;
+      await prisma.order.update({
+        where: { id: o.id },
+        data: {
+          deliveredAt,
+          ...(preConfirm ? { customerReceiptConfirmedAt: confirmAt, customerReceiptCondition: 'good' } : {}),
+        },
+      });
+      const inv = await prisma.invoice.findUnique({ where: { orderId: o.id } });
+      if (preConfirm && inv && !inv.stampedAt) {
+        stampSeq += 1;
+        await prisma.invoice.update({
+          where: { id: inv.id },
+          data: {
+            stampedAt: confirmAt,
+            stampNumber: `MOR-ESTAMP-2026-${String(stampSeq).padStart(6, '0')}`,
+            stampCondition: 'good',
+          },
+        });
+      }
+      if (preConfirm) confirmed++;
+    }
+    console.log(`  delivered_at set on ${deliveredOrders.length} order(s); ${confirmed} pre-confirmed + e-stamped.`);
+  }
+
   console.log('Seeding starter expense claims for Morise Agro Ltd (Sprint 9)...');
   // Three claims at three different stages of the workflow, deliberately
   // submitted/approved by different scoped demo users (Kintu, Namuli, Kato,

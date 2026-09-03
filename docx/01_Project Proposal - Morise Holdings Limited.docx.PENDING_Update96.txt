@@ -1,0 +1,30 @@
+"01_Project Proposal - Morise Holdings Limited.docx" was open in LibreOffice
+during the "Confirm-Receipt Button Driven by the Order's Delivered Status"
+pass (3 September 2026), so this section was NOT applied automatically. Every
+other doc 02-18 received it as "Implementation Status Update 96".
+
+Numbered heading: the next integer after the last "NN. Implementation Status
+Update N" heading in the file (it is "108. ..." once the pending Update
+88-95 sections are all pasted). Paste this in as a new Heading 1 section at
+the end, then delete this file.
+
+============================================================
+
+HEADING (Heading 1 style):
+108. Implementation Status Update 96 (3 September 2026) — Confirm-Receipt Button Driven by the Order's Delivered Status
+
+BODY (Body Text style, one paragraph per block below):
+
+An administrator asked that the customer's "Confirm receipt" button be driven by the order's status: once admin staff mark the order delivered, the button appears in My Orders, and the customer clicks it to attest the goods / services arrived in good condition — which is what generates the automatic Morise e-Stamp. A Morise Logistics delivery record is no longer required.
+
+The Order gains delivered_at (stamped when an administrator advances the order to "delivered", or a Morise Logistics delivery completes) and customer_receipt_confirmed_at / customer_receipt_condition / customer_receipt_note (migration 20260903200000_order_customer_receipt, which back-fills delivered_at for orders already delivered). GET /api/v1/customer-portal/orders and .../:id now return deliveredAt, the receipt fields and canConfirmReceipt (order.status = "delivered" and not yet confirmed), plus eStamped / stampNumber on the invoice sub-object.
+
+POST /api/v1/customer-portal/orders/:id/delivery/acknowledge is now order-driven: allowed once the order is "delivered" and only once, regardless of whether a delivery record exists. A "good" confirmation records the receipt on the order and auto-stamps the order's invoice (MOR-ESTAMP-YYYY-NNNNNN); any other condition records a dispute (no stamp). When a Morise Logistics delivery record exists, the confirmation is mirrored onto it. Audited as invoice.estamp.issued (good) or order.receipt.disputed (else) with a best-effort staff notification. awaiting-confirmation and the dashboard summary's deliveriesToConfirm now count delivered, unconfirmed orders.
+
+Storefront: the My Orders detail panel, the /orders/:id/confirm page and the "Confirm receipt →" row link are all driven by the order's delivered status and no longer need a delivery record. Verified end to end against the running system; nest build, storefront vite build and prisma migrate deploy all clean; openapi.json unchanged at 369 paths / 469 operations.
+
+HEADING (Heading 2 style):
+Impact on this document
+
+BODY (Body Text style):
+Scope note — refinement of Updates 94-95: the customer confirmation that generates the Morise e-Stamp is now tied to the order's delivered status set by admin staff, and works for any delivered order. Additive (four nullable Order columns, one migration); no new endpoint or permission; no change to project scope framing, phasing, cost basis or architecture position.

@@ -67,8 +67,10 @@ export function OrdersPage() {
         method: 'POST',
         body: { condition, note: note || undefined },
       });
-      const fresh = await apiRequest(`/customer-portal/orders/${selectedId}/delivery`);
-      setDelivery(fresh);
+      const freshOrder = await apiRequest(`/customer-portal/orders/${selectedId}`);
+      setDetail(freshOrder);
+      setOrders((prev) => (prev ? prev.map((o) => (o.id === freshOrder.id ? freshOrder : o)) : prev));
+      apiRequest(`/customer-portal/orders/${selectedId}/delivery`).then(setDelivery).catch(() => {});
       setAwaitingIds((prev) => {
         const next = new Set(prev);
         next.delete(selectedId);
@@ -230,20 +232,20 @@ export function OrdersPage() {
                   </tbody>
                 </table>
 
-                {delivery && delivery.status === 'delivered' && (
+                {detail.status === 'delivered' && (
                   <div className="sf-card" style={{ marginTop: 14, background: 'var(--sf-neutral-bg)' }}>
-                    {delivery.customerAckAt ? (
-                      delivery.customerAckCondition === 'good' ? (
+                    {detail.customerReceiptConfirmedAt ? (
+                      detail.customerReceiptCondition === 'good' ? (
                         <div className="sf-banner sf-banner-success">
                           {t('orders.ack.confirmed', {
-                            date: new Date(delivery.customerAckAt).toLocaleDateString(),
+                            date: new Date(detail.customerReceiptConfirmedAt).toLocaleDateString(),
                           })}
-                          {delivery.eStamp && delivery.eStamp.stampNumber && (
+                          {detail.invoice && detail.invoice.eStamped && detail.invoice.stampNumber && (
                             <>
                               {' '}
                               {t('orders.ack.estampAdded', {
-                                number: delivery.eStamp.stampNumber,
-                                invoice: delivery.eStamp.invoiceNumber,
+                                number: detail.invoice.stampNumber,
+                                invoice: detail.invoice.invoiceNumber,
                               })}
                             </>
                           )}
@@ -251,8 +253,8 @@ export function OrdersPage() {
                       ) : (
                         <div className="sf-banner sf-banner-warning">
                           {t('orders.ack.reported', {
-                            condition: t(`orders.ack.condition.${delivery.customerAckCondition}`),
-                            date: new Date(delivery.customerAckAt).toLocaleDateString(),
+                            condition: t(`orders.ack.condition.${detail.customerReceiptCondition}`),
+                            date: new Date(detail.customerReceiptConfirmedAt).toLocaleDateString(),
                           })}
                         </div>
                       )
@@ -261,9 +263,9 @@ export function OrdersPage() {
                         <strong>{t('orders.ack.prompt')}</strong>
                         <div style={{ fontSize: 13, color: 'var(--sf-text-muted)', margin: '4px 0 10px' }}>
                           {t('orders.ack.deliveredOn', {
-                            date: delivery.deliveredAt ? new Date(delivery.deliveredAt).toLocaleDateString() : '—',
-                            driver: delivery.driver?.name || '—',
+                            date: detail.deliveredAt ? new Date(detail.deliveredAt).toLocaleDateString() : '—',
                           })}
+                          {delivery?.driver?.name ? ` ${t('orders.ack.byDriver', { driver: delivery.driver.name })}` : ''}
                         </div>
                         {ackError && <div className="sf-banner sf-banner-error">{ackError}</div>}
                         {!problemMode ? (

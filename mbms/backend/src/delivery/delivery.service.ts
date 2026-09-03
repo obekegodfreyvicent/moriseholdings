@@ -352,7 +352,10 @@ export class DeliveryService {
       if (del.orderId) {
         const ord = await tx.order.findUnique({ where: { id: del.orderId } });
         if (ord && ORDER_FULFILMENT_STATES.includes(ord.status)) {
-          await tx.order.update({ where: { id: ord.id }, data: { status: 'delivered' } });
+          await tx.order.update({
+            where: { id: ord.id },
+            data: { status: 'delivered', ...(ord.deliveredAt ? {} : { deliveredAt: new Date() }) },
+          });
         }
       }
       return del;
@@ -582,140 +585,145 @@ export class DeliveryService {
   }
 
   // GET /customer-portal/orders/awaiting-confirmation — the customer's own
-  // orders whose delivery is completed but not yet confirmed, so the
-  // storefront can surface a clear "Confirm receipt" button / link (Home
-  // prompt, an Orders-row link, and the dedicated /orders/:id/confirm page).
+  // orders an administrator has marked `delivered` that the customer has not
+  // yet confirmed. Order-driven (3 September 2026): a Morise Logistics
+  // delivery record is NOT required — any delivered order awaits the
+  // customer's confirmation. Drives the storefront's "Confirm receipt"
+  // button / link (Home prompt, an Orders-row link, the dedicated
+  // /orders/:id/confirm page).
   async listAwaitingConfirmationForCustomer(customer: AuthenticatedCustomer) {
-    const rows = await this.prisma.delivery.findMany({
-      where: { customerId: customer.id, status: 'delivered', customerAckAt: null, orderId: { not: null } },
+    const orders = await this.prisma.order.findMany({
+      where: { customerId: customer.id, status: 'delivered', customerReceiptConfirmedAt: null },
       orderBy: { deliveredAt: 'asc' },
-      select: {
-        orderId: true,
-        deliveryNumber: true,
-        deliveredAt: true,
-        originCompanyId: true,
-      },
+      select: { id: true, orderNumber: true, deliveredAt: true, updatedAt: true, companyId: true },
     });
-    if (rows.length === 0) return [];
-    const [orders, companies] = await Promise.all([
-      this.prisma.order.findMany({
-        where: { id: { in: rows.map((r) => r.orderId as string) } },
-        select: { id: true, orderNumber: true },
-      }),
+    if (orders.length === 0) return [];
+    const [companies, deliveries] = await Promise.all([
       this.prisma.company.findMany({
-        where: { id: { in: [...new Set(rows.map((r) => r.originCompanyId))] } },
+        where: { id: { in: [...new Set(orders.map((o) => o.companyId))] } },
         select: { id: true, name: true },
       }),
+      this.prisma.delivery.findMany({
+        where: { orderId: { in: orders.map((o) => o.id) } },
+        select: { orderId: true, deliveryNumber: true },
+      }),
     ]);
-    const orderNumber = new Map(orders.map((o) => [o.id, o.orderNumber]));
     const companyName = new Map(companies.map((c) => [c.id, c.name]));
-    return rows.map((r) => ({
-      orderId: r.orderId,
-      orderNumber: orderNumber.get(r.orderId as string) ?? null,
-      deliveryNumber: r.deliveryNumber,
-      deliveredAt: r.deliveredAt,
-      companyName: companyName.get(r.originCompanyId) ?? null,
+    const deliveryNumber = new Map(deliveries.map((d) => [d.orderId, d.deliveryNumber]));
+    return orders.map((o) => ({
+      orderId: o.id,
+      orderNumber: o.orderNumber,
+      deliveryNumber: deliveryNumber.get(o.id) ?? null,
+      deliveredAt: o.deliveredAt ?? o.updatedAt,
+      companyName: companyName.get(o.companyId) ?? null,
     }));
   }
 
   // POST /customer-portal/orders/:id/delivery/acknowledge — the customer
-  // confirms (or reports a problem with) a completed delivery. A "good"
-  // acknowledgement automatically issues a Morise e-Stamp on the order's
-  // invoice; any other condition opens a delivery exception and issues no
-  // stamp. (Doc 22 addendum — "Customer Acknowledgement of Delivery & the
-  // Automatic Morise-Stamped Invoice"; specified as Update 66, built here.)
+  // confirms (or reports a problem with) an order an administrator has
+  // marked `delivered`. Order-driven (3 September 2026): a Morise Logistics
+  // delivery record is not required. A "good" confirmation automatically
+  // issues a Morise e-Stamp on the order's invoice; any other condition
+  // records a dispute and issues no stamp. When a delivery record exists the
+  // confirmation is mirrored onto it (dispatch event log + exception flag).
   async acknowledgeByCustomer(customer: AuthenticatedCustomer, orderId: string, dto: AcknowledgeDeliveryDto) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order || order.customerId !== customer.id) {
       throw new NotFoundAppException('Order not found.');
     }
-    const d = await this.prisma.delivery.findUnique({ where: { orderId } });
-    if (!d) throw new NotFoundAppException('This order has no delivery to confirm yet.');
-    if (d.status !== 'delivered') {
-      throw new ConflictAppException('You can confirm receipt only once the delivery has been completed.');
+    if (order.status !== 'delivered') {
+      throw new ConflictAppException('You can confirm receipt only once the order has been marked delivered.');
     }
-    if (d.customerAckAt) {
-      throw new ConflictAppException('This delivery has already been confirmed.');
+    if (order.customerReceiptConfirmedAt) {
+      throw new ConflictAppException('You have already confirmed receipt of this order.');
     }
 
     const good = dto.condition === 'good';
     const note = dto.note?.trim() || null;
-    const recipientName = dto.recipientName?.trim() || d.recipientName || customer.name;
+    const recipientName = dto.recipientName?.trim() || customer.name;
     const now = new Date();
 
     const result = await this.prisma.$transaction(async (tx) => {
-      await tx.delivery.update({
-        where: { id: d.id },
+      await tx.order.update({
+        where: { id: orderId },
         data: {
-          customerAckCondition: dto.condition,
-          customerAckAt: now,
-          customerAckNote: note,
-          customerAckBy: customer.id,
-          exceptionOpenedAt: good ? null : now,
-          events: {
-            create: {
-              status: 'delivered',
-              note: good
-                ? `Customer confirmed receipt in good condition${recipientName ? ` (${recipientName})` : ''}.`
-                : `Customer reported "${dto.condition.replace(/_/g, ' ')}"${note ? `: ${note}` : ''}.`,
-              recordedBy: customer.id,
-            },
-          },
+          customerReceiptConfirmedAt: now,
+          customerReceiptCondition: dto.condition,
+          customerReceiptNote: note,
         },
       });
 
       let stamped: any = null;
       if (good) {
-        const invoice = d.invoiceId
-          ? await tx.invoice.findUnique({ where: { id: d.invoiceId } })
-          : await tx.invoice.findUnique({ where: { orderId } });
+        const invoice = await tx.invoice.findUnique({ where: { orderId } });
         if (invoice && !invoice.stampedAt) {
           stamped = await tx.invoice.update({
             where: { id: invoice.id },
-            data: {
-              stampedAt: now,
-              stampNumber: await this.nextStampNumber(tx),
-              stampCondition: 'good',
-            },
+            data: { stampedAt: now, stampNumber: await this.nextStampNumber(tx), stampCondition: 'good' },
           });
         } else if (invoice?.stampedAt) {
           stamped = invoice;
         }
       }
-      return { stamped };
+
+      // Mirror onto the Morise Logistics delivery record when one exists, so
+      // the dispatch console and its event log stay in step.
+      const del = await tx.delivery.findUnique({ where: { orderId } });
+      if (del && !del.customerAckAt) {
+        await tx.delivery.update({
+          where: { id: del.id },
+          data: {
+            customerAckCondition: dto.condition,
+            customerAckAt: now,
+            customerAckNote: note,
+            customerAckBy: customer.id,
+            exceptionOpenedAt: good ? null : now,
+            events: {
+              create: {
+                status: 'delivered',
+                note: good
+                  ? `Customer confirmed receipt in good condition${recipientName ? ` (${recipientName})` : ''}.`
+                  : `Customer reported "${dto.condition.replace(/_/g, ' ')}"${note ? `: ${note}` : ''}.`,
+                recordedBy: customer.id,
+              },
+            },
+          },
+        });
+      }
+      return { stamped, deliveryId: del?.id ?? null, deliveryNumber: del?.deliveryNumber ?? null };
     });
 
     await this.auditService.record({
-      eventType: good ? 'invoice.estamp.issued' : 'delivery.exception_opened',
+      eventType: good ? 'invoice.estamp.issued' : 'order.receipt.disputed',
       sourceService: 'delivery-service',
       userId: null,
-      companyId: d.originCompanyId,
-      entityType: good ? 'invoice' : 'delivery',
-      entityId: good ? (result.stamped?.id ?? d.id) : d.id,
+      companyId: order.companyId,
+      entityType: good ? 'invoice' : 'order',
+      entityId: good ? (result.stamped?.id ?? orderId) : orderId,
       action: good ? 'approve' : 'update',
       newValue: good
-        ? { stampNumber: result.stamped?.stampNumber, orderId, deliveryNumber: d.deliveryNumber, acknowledgedByCustomer: customer.id }
-        : { condition: dto.condition, note, deliveryNumber: d.deliveryNumber, acknowledgedByCustomer: customer.id },
+        ? { stampNumber: result.stamped?.stampNumber, orderId, orderNumber: order.orderNumber, confirmedByCustomer: customer.id }
+        : { condition: dto.condition, note, orderId, orderNumber: order.orderNumber, confirmedByCustomer: customer.id },
     });
 
     // Best-effort staff notification to the selling subsidiary's order team.
     try {
       const recipients = await this.notifications.findUsersWithPermissionInCompany(
-        d.originCompanyId,
+        order.companyId,
         'sales.order.manage',
         'sales.order.viewAll',
       );
       await this.notifications.notifyUsers(recipients, {
-        companyId: d.originCompanyId,
-        type: good ? 'delivery.acknowledged' : 'delivery.exception',
+        companyId: order.companyId,
+        type: good ? 'order.receipt.confirmed' : 'order.receipt.disputed',
         title: good
-          ? `Delivery ${d.deliveryNumber} confirmed by the customer`
-          : `Delivery ${d.deliveryNumber} — customer reported a problem`,
+          ? `Order ${order.orderNumber} — receipt confirmed by the customer`
+          : `Order ${order.orderNumber} — customer reported a delivery problem`,
         message: good
           ? `The customer confirmed receipt in good condition. Invoice ${result.stamped?.invoiceNumber ?? ''} was e-stamped${result.stamped?.stampNumber ? ` (${result.stamped.stampNumber})` : ''}.`
-          : `Reported "${dto.condition.replace(/_/g, ' ')}"${note ? `: ${note}` : ''}. A delivery exception is open — no e-stamp was issued.`,
-        entityType: 'delivery',
-        entityId: d.id,
+          : `Reported "${dto.condition.replace(/_/g, ' ')}"${note ? `: ${note}` : ''}. No e-stamp was issued.`,
+        entityType: 'order',
+        entityId: orderId,
       });
     } catch {
       /* notifications are best-effort */
@@ -723,7 +731,7 @@ export class DeliveryService {
 
     return {
       condition: dto.condition,
-      acknowledgedAt: now,
+      confirmedAt: now,
       exceptionOpened: !good,
       eStamp: result.stamped
         ? {
@@ -733,7 +741,6 @@ export class DeliveryService {
             stampedAt: result.stamped.stampedAt,
           }
         : null,
-      delivery: await this.getForCustomerOrder(customer, orderId),
     };
   }
 

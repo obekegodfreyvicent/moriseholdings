@@ -2574,6 +2574,18 @@ model Order {
   cancellationReason         String?        @map("cancellation_reason")
   cancellationReasonOriginal String?        @map("cancellation_reason_original")
   cancellationSourceLanguage String?        @map("cancellation_source_language") @db.VarChar(12)
+  // Set when an administrator marks the order `delivered` (staff status
+  // advance, or a completed Morise Logistics delivery). Drives the
+  // customer's "Confirm receipt" button in the storefront.
+  deliveredAt                DateTime?      @map("delivered_at")
+  // Customer confirmation of receipt (3 September 2026): set through the
+  // customer portal after the order is `delivered`. `customerReceiptCondition`
+  // is one of good / damaged / incomplete / not_received — "good" triggers
+  // the automatic Morise e-Stamp on the order's invoice; the others record a
+  // dispute and issue no stamp.
+  customerReceiptConfirmedAt DateTime?      @map("customer_receipt_confirmed_at")
+  customerReceiptCondition   String?        @map("customer_receipt_condition") @db.VarChar(20)
+  customerReceiptNote        String?        @map("customer_receipt_note")
   createdAt                  DateTime       @default(now()) @map("created_at")
   updatedAt                  DateTime       @updatedAt @map("updated_at")
 

@@ -67,6 +67,15 @@ export function toOrderResource(o: any, lang = 'en', translation?: ContentTransl
     // alongside the English (a "show original" toggle, like Support tickets).
     cancellationReasonOriginal: o.cancellationReasonOriginal ?? null,
     cancellationSourceLanguage: o.cancellationSourceLanguage ?? null,
+    // Customer confirmation of receipt (3 September 2026). `canConfirmReceipt`
+    // is true once an administrator has marked the order `delivered` and the
+    // customer has not confirmed yet — this is what shows the "Confirm
+    // receipt" button in the storefront.
+    deliveredAt: o.deliveredAt ?? null,
+    customerReceiptConfirmedAt: o.customerReceiptConfirmedAt ?? null,
+    customerReceiptCondition: o.customerReceiptCondition ?? null,
+    customerReceiptNote: o.customerReceiptNote ?? null,
+    canConfirmReceipt: o.status === 'delivered' && !o.customerReceiptConfirmedAt,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
     items: Array.isArray(o.items)
@@ -86,6 +95,9 @@ export function toOrderResource(o: any, lang = 'en', translation?: ContentTransl
           amount: o.invoice.amount.toString(),
           dueDate: o.invoice.dueDate,
           paidAt: o.invoice.paidAt,
+          eStamped: !!o.invoice.stampedAt,
+          stampNumber: o.invoice.stampNumber ?? null,
+          stampedAt: o.invoice.stampedAt ?? null,
         }
       : undefined,
     trackerSteps:
@@ -403,7 +415,16 @@ export class OrdersService {
     }
     const nextStatus = STATUS_SEQUENCE[currentIdx + 1];
 
-    const updated = await this.prisma.order.update({ where: { id }, data: { status: nextStatus }, include: ORDER_INCLUDE });
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: {
+        status: nextStatus,
+        // Stamp the moment the order becomes deliverable-confirmable so the
+        // storefront can show "delivered on <date>" beside the button.
+        ...(nextStatus === 'delivered' && !order.deliveredAt ? { deliveredAt: new Date() } : {}),
+      },
+      include: ORDER_INCLUDE,
+    });
     await this.auditService.record({
       eventType: 'sales.order.status_advanced',
       sourceService: 'sales-service',
