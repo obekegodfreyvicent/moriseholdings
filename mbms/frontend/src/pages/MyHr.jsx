@@ -585,7 +585,7 @@ export function MyIdCardPage() {
       ) : (
         <>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <IdCard card={data.card} />
+            <IdCard card={data.card} both />
             <div className="card" style={{ minWidth: 240, flex: 1 }}>
               <strong>Card details</strong>
               <dl style={{ margin: '10px 0 0', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: 13 }}>

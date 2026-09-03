@@ -302,6 +302,8 @@ function IssueModal({ companies, excludeEmployeeIds, onClose, onDone }) {
 function EditModal({ card, onClose, onDone }) {
   const [photoUrl, setPhotoUrl] = useState(card.photoUrl || '');
   const [expiresOn, setExpiresOn] = useState((card.expiresOn || '').slice(0, 10));
+  const [bloodGroup, setBloodGroup] = useState(card.bloodGroup || '');
+  const [backNotes, setBackNotes] = useState(card.backNotes || '');
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -312,7 +314,12 @@ function EditModal({ card, onClose, onDone }) {
     try {
       await apiRequest(`/staff-id-cards/${card.id}`, {
         method: 'PATCH',
-        body: { photoUrl: photoUrl.trim(), expiresOn: expiresOn || undefined },
+        body: {
+          photoUrl: photoUrl.trim(),
+          expiresOn: expiresOn || undefined,
+          bloodGroup: bloodGroup.trim(),
+          backNotes: backNotes.trim(),
+        },
       });
       onDone();
     } catch (err) {
@@ -324,19 +331,30 @@ function EditModal({ card, onClose, onDone }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 440 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ width: 460 }} onClick={(e) => e.stopPropagation()}>
         <h2>{card.cardNumber} — {card.employee.fullName}</h2>
         {error && <div className="banner error">{error}</div>}
         <form onSubmit={submit}>
           <div className="field" style={{ marginBottom: 12 }}>
-            <label>Photo URL</label>
+            <label>Photo URL <span style={{ color: '#8592a8', fontWeight: 400 }}>(front)</span></label>
             <input className="input" placeholder="https://… (leave blank for initials)" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} />
           </div>
-          <div className="field" style={{ marginBottom: 16 }}>
-            <label>Expires on</label>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>Expires on <span style={{ color: '#8592a8', fontWeight: 400 }}>(front)</span></label>
             <input className="input" type="date" value={expiresOn} onChange={(e) => setExpiresOn(e.target.value)} />
             <div style={{ fontSize: 11.5, color: '#7c8aa3', marginTop: 4 }}>
               Setting a future date on an expired card reactivates it. A revoked card stays revoked until restored.
+            </div>
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>Blood group <span style={{ color: '#8592a8', fontWeight: 400 }}>(back)</span></label>
+            <input className="input" placeholder="e.g. O+" maxLength={8} value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} />
+          </div>
+          <div className="field" style={{ marginBottom: 16 }}>
+            <label>Back note <span style={{ color: '#8592a8', fontWeight: 400 }}>(back)</span></label>
+            <textarea className="input" rows={2} maxLength={500} placeholder="Optional note printed on the card back" value={backNotes} onChange={(e) => setBackNotes(e.target.value)} />
+            <div style={{ fontSize: 11.5, color: '#7c8aa3', marginTop: 4 }}>
+              National ID, emergency contact and the issuer address are taken automatically from the employee and company records.
             </div>
           </div>
           <div className="modal-actions">

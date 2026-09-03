@@ -25,6 +25,17 @@ export class IssueCardDto {
   @IsOptional()
   @IsDateString()
   issuedOn?: string;
+
+  // Card back.
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  bloodGroup?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  backNotes?: string;
 }
 
 export class GenerateCardsDto {
@@ -49,6 +60,17 @@ export class UpdateCardDto {
   @IsOptional()
   @IsDateString()
   expiresOn?: string;
+
+  // Card back.
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  bloodGroup?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  backNotes?: string;
 }
 
 export class ReissueCardDto {

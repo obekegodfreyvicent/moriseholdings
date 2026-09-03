@@ -68,7 +68,10 @@ export class MyHrService {
     const card = await this.prisma.staffIdCard.findUnique({ where: { employeeId: e.id } });
     if (!card) return { linked: true, card: null };
     const [company, dept, branch] = await Promise.all([
-      this.prisma.company.findUnique({ where: { id: e.companyId }, select: { name: true } }),
+      this.prisma.company.findUnique({
+        where: { id: e.companyId },
+        select: { name: true, address: true, contactPhone: true, contactEmail: true },
+      }),
       e.departmentId ? this.prisma.department.findUnique({ where: { id: e.departmentId }, select: { name: true } }) : null,
       e.branchId ? this.prisma.branch.findUnique({ where: { id: e.branchId }, select: { name: true } }) : null,
     ]);
@@ -86,6 +89,8 @@ export class MyHrService {
         expiresOn: card.expiresOn,
         revokedReason: card.revokedReason,
         photoUrl: card.photoUrl,
+        bloodGroup: card.bloodGroup,
+        backNotes: card.backNotes,
         reissueCount: card.reissueCount,
         employee: {
           id: e.id,
@@ -100,6 +105,24 @@ export class MyHrService {
           departmentName: dept?.name ?? null,
           branchName: branch?.name ?? null,
           employmentStartDate: e.employmentStartDate,
+        },
+        // Card back (3 September 2026) — same shape as
+        // /api/v1/staff-id-cards; national id + emergency contact from the
+        // Employee, issuer address / contact from the Company.
+        back: {
+          nationalId: e.nationalId,
+          emergencyContactName: e.emergencyContactName,
+          emergencyContactPhone: e.emergencyContactPhone,
+          bloodGroup: card.bloodGroup,
+          notes: card.backNotes,
+          issuingAuthority: 'Morise Holdings Limited',
+          issuerAddress: company?.address ?? null,
+          issuerContact: company?.contactPhone ?? company?.contactEmail ?? null,
+          terms: [
+            'This card remains the property of Morise Holdings Limited and must be surrendered on request or when employment ends.',
+            'Use of this card is limited to the named holder. It is not transferable and must not be altered.',
+            'Report a lost or stolen card to Human Resources immediately.',
+          ],
         },
       },
     };

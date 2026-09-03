@@ -23,6 +23,14 @@ import { GenerateCardsDto, IssueCardDto, ReissueCardDto, RevokeCardDto, UpdateCa
 const GROUP_PERM = 'employee.idcard.viewAll';
 const DEFAULT_VALID_YEARS = 3;
 
+// Printed on the card back (3 September 2026). Static conditions of use — not
+// per-card, so kept here rather than in a table for this proof-of-concept.
+const STANDARD_TERMS = [
+  'This card remains the property of Morise Holdings Limited and must be surrendered on request or when employment ends.',
+  'Use of this card is limited to the named holder. It is not transferable and must not be altered.',
+  'Report a lost or stolen card to Human Resources immediately.',
+];
+
 type CardWithEmployee = {
   id: string;
   employeeId: string;
@@ -35,6 +43,8 @@ type CardWithEmployee = {
   revokedOn: Date | null;
   revokedReason: string | null;
   photoUrl: string | null;
+  bloodGroup: string | null;
+  backNotes: string | null;
   issuedByUserId: string | null;
   reissueCount: number;
   createdAt: Date;
@@ -51,6 +61,9 @@ type CardWithEmployee = {
     branchId: string | null;
     departmentId: string | null;
     employmentStartDate: Date;
+    nationalId: string | null;
+    emergencyContactName: string | null;
+    emergencyContactPhone: string | null;
   };
 };
 
@@ -117,7 +130,10 @@ export class StaffIdCardsService {
     }
     const empty: { id: string; name: string }[] = [];
     const [companies, departments, branches] = await Promise.all([
-      this.prisma.company.findMany({ where: { id: { in: [...companyIds] } }, select: { id: true, name: true } }),
+      this.prisma.company.findMany({
+        where: { id: { in: [...companyIds] } },
+        select: { id: true, name: true, address: true, contactPhone: true, contactEmail: true },
+      }),
       departmentIds.size
         ? this.prisma.department.findMany({ where: { id: { in: [...departmentIds] } }, select: { id: true, name: true } })
         : Promise.resolve(empty),
@@ -127,19 +143,24 @@ export class StaffIdCardsService {
     ]);
     const toNameMap = (rows: { id: string; name: string }[]) =>
       new Map<string, string>(rows.map((x) => [x.id, x.name] as [string, string]));
-    const companyName = toNameMap(companies);
+    const company = new Map(companies.map((x) => [x.id, x] as const));
     const departmentName = toNameMap(departments);
     const branchName = toNameMap(branches);
     const today = startOfToday();
-    return cards.map((c) => this.toResource(c, { companyName, departmentName, branchName }, today));
+    return cards.map((c) => this.toResource(c, { company, departmentName, branchName }, today));
   }
 
   private toResource(
     c: CardWithEmployee,
-    names: { companyName: Map<string, string>; departmentName: Map<string, string>; branchName: Map<string, string> },
+    names: {
+      company: Map<string, { id: string; name: string; address: string | null; contactPhone: string | null; contactEmail: string | null }>;
+      departmentName: Map<string, string>;
+      branchName: Map<string, string>;
+    },
     today = startOfToday(),
   ) {
     const e = c.employee;
+    const co = names.company.get(e.companyId);
     return {
       id: c.id,
       cardNumber: c.cardNumber,
@@ -151,6 +172,8 @@ export class StaffIdCardsService {
       revokedOn: c.revokedOn,
       revokedReason: c.revokedReason,
       photoUrl: c.photoUrl,
+      bloodGroup: c.bloodGroup,
+      backNotes: c.backNotes,
       reissueCount: c.reissueCount,
       issuedByUserId: c.issuedByUserId,
       createdAt: c.createdAt,
@@ -167,11 +190,25 @@ export class StaffIdCardsService {
         userId: e.userId,
         employmentStartDate: e.employmentStartDate,
         companyId: e.companyId,
-        companyName: names.companyName.get(e.companyId) ?? null,
+        companyName: co?.name ?? null,
         departmentId: e.departmentId,
         departmentName: e.departmentId ? names.departmentName.get(e.departmentId) ?? null : null,
         branchId: e.branchId,
         branchName: e.branchId ? names.branchName.get(e.branchId) ?? null : null,
+      },
+      // Card back (3 September 2026) — mostly derived: national id and
+      // emergency contact from the Employee, issuer address / contact from
+      // the Company; blood group and the free-text note are card-held.
+      back: {
+        nationalId: e.nationalId,
+        emergencyContactName: e.emergencyContactName,
+        emergencyContactPhone: e.emergencyContactPhone,
+        bloodGroup: c.bloodGroup,
+        notes: c.backNotes,
+        issuingAuthority: 'Morise Holdings Limited',
+        issuerAddress: co?.address ?? null,
+        issuerContact: co?.contactPhone ?? co?.contactEmail ?? null,
+        terms: STANDARD_TERMS,
       },
     };
   }
@@ -335,6 +372,8 @@ export class StaffIdCardsService {
         issuedOn,
         expiresOn: addYears(issuedOn, dto.validYears ?? DEFAULT_VALID_YEARS),
         photoUrl: dto.photoUrl?.trim() || null,
+        bloodGroup: dto.bloodGroup?.trim() || null,
+        backNotes: dto.backNotes?.trim() || null,
         issuedByUserId: user.id,
       },
       include: { employee: true },
@@ -413,6 +452,8 @@ export class StaffIdCardsService {
     const card = await this.loadOrThrow(user, id);
     const data: any = {};
     if (dto.photoUrl !== undefined) data.photoUrl = dto.photoUrl.trim() || null;
+    if (dto.bloodGroup !== undefined) data.bloodGroup = dto.bloodGroup.trim() || null;
+    if (dto.backNotes !== undefined) data.backNotes = dto.backNotes.trim() || null;
     if (dto.expiresOn !== undefined) {
       const expiresOn = new Date(dto.expiresOn);
       data.expiresOn = expiresOn;

@@ -1,0 +1,31 @@
+"01_Project Proposal - Morise Holdings Limited.docx" was open in LibreOffice
+during the "Staff Identification Card — Front and Back" pass (3 September
+2026), so this section was NOT applied automatically. Every other doc 02-18
+received it as "Implementation Status Update 91".
+
+The numbered heading follows the still-pending sections ahead of it: once
+"*.PENDING_Update88/89/90.txt" are all pasted it is "103. …". Use the next
+integer after the last "NN. Implementation Status Update N" heading in the
+file. Paste this in as a new Heading 1 section at the end, then delete this
+file.
+
+============================================================
+
+HEADING (Heading 1 style):
+103. Implementation Status Update 91 (3 September 2026) — Staff Identification Card — Front and Back
+
+BODY (Body Text style, one paragraph per block below):
+
+Following Update 90 (the automatic staff identification card), an administrator asked that the card have a distinct front and a back part rather than a single face.
+
+The card resource now carries a back object alongside the front fields. The front is unchanged — logo header, photo or initials, holder name / job title / staff number / company / unit, the QR block, card number and issue / expiry. The back carries the standard conditions of use, an "if found, return to" block built from the issuing company's registered address and contact, the holder's national ID and emergency contact (read live from the Employee record), an optional blood group and a free-text note (both held on the card), a Code 128-style barcode of the card number and holder / issuing-officer signature lines.
+
+Two card-held back fields are added — blood_group and back_notes (migration 20260903140000_staff_id_card_back) — settable on issue and via PATCH /api/v1/staff-id-cards/:id under the existing employee.idcard.manage permission; everything else on the back is derived. GET /api/v1/staff-id-cards* and GET /api/v1/my-hr/id-card all return the new back object; no new endpoint or permission.
+
+The shared IdCard.jsx component renders both faces — a "Show back / Show front" flip on the admin Staff ID Cards gallery, and front-and-back side by side on My HR -> My ID Card. The admin Edit dialog gains Blood group and Back note fields. Verified end to end against the running system; nest build, admin vite build and prisma migrate deploy all clean; openapi.json unchanged at 367 paths / 467 operations.
+
+HEADING (Heading 2 style):
+Impact on this document
+
+BODY (Body Text style):
+Scope note — a refinement of the Update 90 identification-card feature: the card now has a front and a back part. Additive (two nullable columns, a derived back object); no change to project scope framing, phasing, cost basis or architecture position.
