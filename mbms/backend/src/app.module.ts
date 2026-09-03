@@ -11,6 +11,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { IdentityModule } from './identity/identity.module';
 import { OrganizationModule } from './organization/organization.module';
 import { EmployeesModule } from './employees/employees.module';
+import { StaffIdCardsModule } from './staff-id-cards/staff-id-cards.module';
 import { CustomersModule } from './customers/customers.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { ProductsModule } from './products/products.module';
@@ -59,6 +60,7 @@ import { HealthController } from './health.controller';
     IdentityModule,
     OrganizationModule,
     EmployeesModule,
+    StaffIdCardsModule,
     CustomersModule,
     SuppliersModule,
     ProductsModule,

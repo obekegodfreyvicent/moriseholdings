@@ -306,11 +306,59 @@ model Employee {
   updatedAt               DateTime       @updatedAt @map("updated_at")
 
   employmentHistory EmployeeEmploymentHistory[]
+  idCard            StaffIdCard?
 
   @@unique([companyId, employeeNumber])
   @@index([companyId])
   @@index([branchId])
   @@map("employees")
+}
+
+// Automatic Staff Identification Card (3 September 2026) — every actively
+// registered administration staff member carries exactly one live identity
+// card. A card is issued automatically the moment an Employee record is
+// created (EmployeesService.create), and the bulk endpoint
+// POST /api/v1/staff-id-cards/generate back-fills a card for every active
+// employee that still lacks one and expires any card past its date. The
+// card is deactivated automatically when the employee is set inactive and
+// re-activated when they return.
+//
+// `photoUrl` is a text reference only — the same deferred object-storage
+// gap noted throughout this codebase for employee/asset/supplier documents;
+// the admin UI falls back to the holder's initials when it is empty.
+// `verificationCode` is the opaque token the printed QR block resolves to
+// via GET /api/v1/staff-id-cards/verify/:code.
+enum StaffIdCardStatus {
+  active
+  revoked
+  expired
+}
+
+model StaffIdCard {
+  id               String            @id @default(uuid())
+  employeeId       String            @unique @map("employee_id")
+  // Denormalised from the employee at issue time so the feed can be scoped
+  // (BR-01) without a join, matching how deliveries/notifications carry a
+  // company_id copy.
+  companyId        String            @map("company_id")
+  cardNumber       String            @unique @map("card_number") @db.VarChar(40)
+  verificationCode String            @unique @map("verification_code") @db.VarChar(64)
+  status           StaffIdCardStatus @default(active)
+  issuedOn         DateTime          @map("issued_on") @db.Date
+  expiresOn        DateTime          @map("expires_on") @db.Date
+  revokedOn        DateTime?         @map("revoked_on") @db.Date
+  revokedReason    String?           @map("revoked_reason")
+  photoUrl         String?           @map("photo_url") @db.VarChar(500)
+  issuedByUserId   String?           @map("issued_by_user_id")
+  reissueCount     Int               @default(0) @map("reissue_count")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@map("staff_id_cards")
 }
 
 // "Employment history": Sprint 3 deliberately modeled only one current

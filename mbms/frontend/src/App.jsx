@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/Dashboard';
 import { CompaniesPage } from './pages/Companies';
 import { CompanyDetailPage } from './pages/CompanyDetail';
 import { EmployeesPage } from './pages/Employees';
+import { StaffIdCardsPage } from './pages/StaffIdCards';
 import { CustomersPage } from './pages/Customers';
 import { SuppliersPage } from './pages/Suppliers';
 import { ProductsPage } from './pages/Products';
@@ -20,7 +21,7 @@ import { HrDashboardPage } from './pages/Hr';
 import { DepartmentsPage } from './pages/Departments';
 import { ShiftSchedulingPage } from './pages/ShiftScheduling';
 import { PayrollPage } from './pages/Payroll';
-import { MyClockPage, MyLeavePage, MyShiftsPage, MyPerformancePage, MyPayslipsPage, MySalaryAdvancesPage } from './pages/MyHr';
+import { MyClockPage, MyLeavePage, MyShiftsPage, MyPerformancePage, MyPayslipsPage, MySalaryAdvancesPage, MyIdCardPage } from './pages/MyHr';
 import { FinancePage } from './pages/Finance';
 import { AuditTrailPage } from './pages/AuditTrail';
 import { AccountingPage } from './pages/Accounting';
@@ -69,6 +70,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <EmployeesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/staff-id-cards"
+            element={
+              <RequireAuth>
+                <StaffIdCardsPage />
               </RequireAuth>
             }
           />
@@ -181,6 +190,7 @@ export default function App() {
           <Route path="/my/shifts" element={<RequireAuth><MyShiftsPage /></RequireAuth>} />
           <Route path="/my/performance" element={<RequireAuth><MyPerformancePage /></RequireAuth>} />
           <Route path="/my/payslips" element={<RequireAuth><MyPayslipsPage /></RequireAuth>} />
+          <Route path="/my/id-card" element={<RequireAuth><MyIdCardPage /></RequireAuth>} />
           <Route path="/my/salary-advances" element={<RequireAuth><MySalaryAdvancesPage /></RequireAuth>} />
           <Route path="/finance" element={<RequireAuth><FinancePage /></RequireAuth>} />
           <Route

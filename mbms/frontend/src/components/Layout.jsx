@@ -37,6 +37,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/hr', icon: '\u{1F4CA}', label: 'HR Dashboard' },
       { to: '/employees', icon: '\u{1F464}', label: 'Employees' },
+      { to: '/staff-id-cards', icon: '\u{1F194}', label: 'Staff ID Cards' },
       { to: '/departments', icon: '\u{1F3EC}', label: 'Departments' },
       { to: '/attendance', icon: '\u{23F1}', label: 'Attendance' },
       { to: '/leave', icon: '\u{1F3D6}', label: 'Leave Requests' },
@@ -55,6 +56,7 @@ const NAV_GROUPS = [
       { to: '/my/shifts', icon: '\u{1F4C5}', label: 'My Shifts' },
       { to: '/my/performance', icon: '\u{1F3AF}', label: 'My Performance' },
       { to: '/my/payslips', icon: '\u{1F9FE}', label: 'My Payslips' },
+      { to: '/my/id-card', icon: '\u{1F194}', label: 'My ID Card' },
       { to: '/my/salary-advances', icon: '\u{1F4B5}', label: 'My Salary Advances' },
     ],
   },

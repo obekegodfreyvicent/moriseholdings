@@ -58,6 +58,53 @@ export class MyHrService {
     };
   }
 
+  // My ID Card (3 September 2026) — the caller's own automatic staff
+  // identification card, scoped by Employee.userId like every other My HR
+  // read. `{ linked: false }` when the login has no employee record;
+  // `{ linked: true, card: null }` when a card has not been issued yet.
+  async idCard(user: AuthenticatedUser) {
+    const e = await this.me(user);
+    if (!e) return { linked: false };
+    const card = await this.prisma.staffIdCard.findUnique({ where: { employeeId: e.id } });
+    if (!card) return { linked: true, card: null };
+    const [company, dept, branch] = await Promise.all([
+      this.prisma.company.findUnique({ where: { id: e.companyId }, select: { name: true } }),
+      e.departmentId ? this.prisma.department.findUnique({ where: { id: e.departmentId }, select: { name: true } }) : null,
+      e.branchId ? this.prisma.branch.findUnique({ where: { id: e.branchId }, select: { name: true } }) : null,
+    ]);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    return {
+      linked: true,
+      card: {
+        id: card.id,
+        cardNumber: card.cardNumber,
+        verificationCode: card.verificationCode,
+        status: card.status,
+        isValid: card.status === 'active' && card.expiresOn >= today,
+        issuedOn: card.issuedOn,
+        expiresOn: card.expiresOn,
+        revokedReason: card.revokedReason,
+        photoUrl: card.photoUrl,
+        reissueCount: card.reissueCount,
+        employee: {
+          id: e.id,
+          employeeNumber: e.employeeNumber,
+          firstName: e.firstName,
+          lastName: e.lastName,
+          fullName: `${e.firstName} ${e.lastName}`,
+          initials: `${(e.firstName || '').charAt(0)}${(e.lastName || '').charAt(0)}`.toUpperCase(),
+          jobTitle: e.jobTitle,
+          status: e.status,
+          companyName: company?.name ?? null,
+          departmentName: dept?.name ?? null,
+          branchName: branch?.name ?? null,
+          employmentStartDate: e.employmentStartDate,
+        },
+      },
+    };
+  }
+
   async attendance(user: AuthenticatedUser, from?: string, to?: string) {
     const e = await this.needMe(user);
     const where: any = { employeeId: e.id };

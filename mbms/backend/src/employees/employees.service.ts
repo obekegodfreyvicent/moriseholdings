@@ -6,6 +6,7 @@ import { AuthenticatedUser } from '../common/strategies/jwt.strategy';
 import { hasGroupVisibility, isCompanyInScope } from '../common/scope.util';
 import { CreateEmployeeDto, UpdateEmployeeDto } from './dto/employee.dto';
 import { AuditService } from '../common/audit/audit.service';
+import { StaffIdCardsService } from '../staff-id-cards/staff-id-cards.service';
 
 const GROUP_PERM = 'employee.viewAll';
 const SENSITIVE_PERM = 'employee.view.sensitive';
@@ -54,6 +55,7 @@ export class EmployeesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly staffIdCards: StaffIdCardsService,
   ) {}
 
   // GET /employees — FR-EMP-01, scoped per BR-01
@@ -126,6 +128,13 @@ export class EmployeesService {
       action: 'create',
       newValue: { employeeNumber: employee.employeeNumber, firstName: employee.firstName, lastName: employee.lastName },
     });
+    // Automatic Staff Identification Card (3 September 2026): every actively
+    // registered staff member carries a card — issue it the moment the
+    // record is created. Best-effort; never blocks the create.
+    await this.staffIdCards.issueForEmployeeAuto(
+      { id: employee.id, companyId: employee.companyId, employeeNumber: employee.employeeNumber, status: employee.status },
+      user.id,
+    );
     return toResource(employee, user.permissions.includes(SENSITIVE_PERM));
   }
 
@@ -194,6 +203,15 @@ export class EmployeesService {
       previousValue: { status: employee.status, jobTitle: employee.jobTitle },
       newValue: { status: updated.status, jobTitle: updated.jobTitle },
     });
+    // Keep the staff identification card in step with the employee's
+    // status — a deactivated employee's card is revoked, a returning one's
+    // is re-activated. Best-effort.
+    if (dto.status !== undefined && dto.status !== employee.status) {
+      await this.staffIdCards.syncEmployeeStatus(
+        { id: updated.id, companyId: updated.companyId, status: updated.status },
+        user.id,
+      );
+    }
     return toResource(updated, user.permissions.includes(SENSITIVE_PERM));
   }
 

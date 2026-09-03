@@ -44,6 +44,11 @@ export class MyHrController {
     return this.myHr.payslips(user);
   }
 
+  @Get('id-card')
+  idCard(@CurrentUser() user: AuthenticatedUser) {
+    return this.myHr.idCard(user);
+  }
+
   @Get('salary-advances')
   salaryAdvances(@CurrentUser() user: AuthenticatedUser) {
     return this.myHr.salaryAdvances(user);

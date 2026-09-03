@@ -25,6 +25,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -155,6 +156,12 @@ const PERMISSIONS = [
   // expenses, within your scope. viewAll = the group-wide fleet view.
   { code: 'fleet.manage', domain: 'operations', description: 'Register and update vehicles, assign drivers, log fuel and odometer readings, manage service schedules and records, statutory renewals, accident records and vehicle expenses, within your scope.' },
   { code: 'fleet.viewAll', domain: 'operations', description: 'View every vehicle, its logs and the fleet reports group-wide, not only those in your own scope.' },
+  // Automatic Staff Identification Card (3 September 2026). A card is issued
+  // automatically on employee creation and by the bulk generate sweep;
+  // manage = issue / reissue / revoke / restore a single card, correct its
+  // photo reference or expiry, and run the sweep, within your scope.
+  { code: 'employee.idcard.manage', domain: 'hr', description: 'Issue, reissue, revoke, restore and correct staff identification cards, and run the bulk generation, within your scope.' },
+  { code: 'employee.idcard.viewAll', domain: 'hr', description: 'View every staff identification card group-wide, not only those in your own scope.' },
 ];
 
 // Sprint 1+2+3 (+ basic accounting/dashboard) wires permissions only for the
@@ -665,6 +672,20 @@ ROLE_PERMISSIONS['Branch Manager'].push('fleet.manage');
 ROLE_PERMISSIONS['Warehouse Manager'].push('fleet.manage');
 for (const r of ['Group CEO', 'Auditor', 'External Auditor', 'Board Member', 'Read-only User']) {
   ROLE_PERMISSIONS[r].push('fleet.viewAll');
+}
+
+// Automatic Staff Identification Card (3 September 2026) — HR-domain, same
+// grant shape as delivery.* / fleet.* above. manage + viewAll to the
+// "everything" roles, IT Administrator (seeded closest-to-Super-Admin
+// persona) and the Human Resources Manager (owns the HR module
+// operationally); manage only, own scope, to Branch Manager (issues cards
+// for their own branch's staff); viewAll to the oversight roles.
+for (const r of ['Super Administrator', 'Managing Director', 'IT Administrator', 'Human Resources Manager']) {
+  ROLE_PERMISSIONS[r].push('employee.idcard.manage', 'employee.idcard.viewAll');
+}
+ROLE_PERMISSIONS['Branch Manager'].push('employee.idcard.manage');
+for (const r of ['Group CEO', 'Auditor', 'External Auditor', 'Board Member', 'Read-only User', 'Legal Officer', 'Operations Manager']) {
+  ROLE_PERMISSIONS[r].push('employee.idcard.viewAll');
 }
 
 async function main() {
@@ -4241,6 +4262,45 @@ async function main() {
         });
       }
     }
+  }
+
+  // Automatic Staff Identification Card (3 September 2026): issue a live
+  // card for every actively registered staff member that still has none, so
+  // the demo has a full set without anyone hitting POST
+  // /api/v1/staff-id-cards/generate first. Card numbers are MID-XXXXXXXX
+  // (eight uppercase hex); the verification code backs the printed QR / the
+  // verify endpoint. Idempotent — skips anyone who already has a card.
+  console.log('Seeding automatic staff identification cards...');
+  {
+    const activeStaff = await prisma.employee.findMany({
+      where: { status: 'active', idCard: { is: null } },
+      select: { id: true, companyId: true },
+    });
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const expiresOn = new Date(today);
+    expiresOn.setUTCFullYear(expiresOn.getUTCFullYear() + 3);
+    const seen = new Set<string>();
+    const hex = () => randomBytes(4).toString('hex').toUpperCase();
+    let issued = 0;
+    for (const emp of activeStaff) {
+      let cardNumber = `MID-${hex()}`;
+      while (seen.has(cardNumber)) cardNumber = `MID-${hex()}`;
+      seen.add(cardNumber);
+      await prisma.staffIdCard.create({
+        data: {
+          employeeId: emp.id,
+          companyId: emp.companyId,
+          cardNumber,
+          verificationCode: randomBytes(24).toString('hex'),
+          status: 'active',
+          issuedOn: today,
+          expiresOn,
+        },
+      });
+      issued++;
+    }
+    console.log(`  ${issued} staff identification card(s) issued.`);
   }
 
   console.log('\nSeed complete.');

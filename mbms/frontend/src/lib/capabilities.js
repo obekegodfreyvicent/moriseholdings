@@ -22,6 +22,7 @@ export const ROUTE_CAPABILITIES = {
   '/my/shifts': '*',
   '/my/performance': '*',
   '/my/payslips': '*',
+  '/my/id-card': '*',
   '/my/salary-advances': '*',
 
   // Admin / Backend
@@ -40,6 +41,7 @@ export const ROUTE_CAPABILITIES = {
   // Human Resources
   '/hr': ['employee.viewAll', 'recruitment.viewAll', 'attendance.viewAll', 'leave.viewAll', 'performance.viewAll'],
   '/employees': ['employee.manage', 'employee.viewAll'],
+  '/staff-id-cards': ['employee.idcard.manage', 'employee.idcard.viewAll'],
   '/departments': ['organization.company.manage', 'organization.company.viewAll', 'employee.viewAll', 'recruitment.viewAll'],
   '/attendance': ['attendance.manage', 'attendance.viewAll'],
   '/leave': ['leave.manage', 'leave.approve', 'leave.viewAll'],

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Money } from '../components/Money';
+import { IdCard } from '../components/IdCard';
 import { apiRequest, ApiRequestError } from '../lib/api';
 
 // My HR — employee self-service (28 August 2026). Six screens, all scoped to
@@ -556,5 +557,54 @@ function RequestAdvanceModal({ onClose, onDone }) {
         </form>
       </div>
     </div>
+  );
+}
+
+// ------------------------------- My ID Card ---------------------------------
+// Automatic Staff Identification Card (3 September 2026) — the caller's own
+// staff identity card, read from GET /api/v1/my-hr/id-card. Every active
+// staff member has one; it is issued automatically and follows their
+// employment status.
+
+export function MyIdCardPage() {
+  const { data, error } = useMyHr('/my-hr/id-card');
+  return (
+    <Shell title="My ID Card">
+      {error && <div className="banner error">{error}</div>}
+      {data === undefined ? (
+        <div className="card"><div className="loading">Loading…</div></div>
+      ) : data === null || data.linked === false ? (
+        <NotLinked />
+      ) : !data.card ? (
+        <div className="card">
+          <div className="empty">
+            Your identification card has not been issued yet. It is normally created automatically —
+            ask HR to issue one from Staff ID Cards.
+          </div>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <IdCard card={data.card} />
+            <div className="card" style={{ minWidth: 240, flex: 1 }}>
+              <strong>Card details</strong>
+              <dl style={{ margin: '10px 0 0', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: 13 }}>
+                <dt style={{ color: '#8592a8' }}>Card number</dt><dd className="mono" style={{ margin: 0 }}>{data.card.cardNumber}</dd>
+                <dt style={{ color: '#8592a8' }}>Status</dt><dd style={{ margin: 0 }}>{data.card.status}{data.card.isValid ? ' · valid' : ''}</dd>
+                <dt style={{ color: '#8592a8' }}>Issued</dt><dd style={{ margin: 0 }}>{String(data.card.issuedOn).slice(0, 10)}</dd>
+                <dt style={{ color: '#8592a8' }}>Expires</dt><dd style={{ margin: 0 }}>{String(data.card.expiresOn).slice(0, 10)}</dd>
+                {data.card.reissueCount > 0 && (<><dt style={{ color: '#8592a8' }}>Reissued</dt><dd style={{ margin: 0 }}>{data.card.reissueCount}×</dd></>)}
+                {data.card.status === 'revoked' && data.card.revokedReason && (
+                  <><dt style={{ color: '#8592a8' }}>Revoked</dt><dd style={{ margin: 0 }}>{data.card.revokedReason}</dd></>
+                )}
+              </dl>
+              <div style={{ fontSize: 11.5, color: '#7c8aa3', marginTop: 12 }}>
+                Lost or damaged card? Ask HR or your branch manager to reissue it.
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </Shell>
   );
 }
