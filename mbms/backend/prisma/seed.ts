@@ -1068,6 +1068,78 @@ async function main() {
   }
   // Milling starter policies are seeded further down, next to the C&F / WMS / CMS ones.
 
+  // Morise Research & Consultancy Ltd (9 September 2026) — SEVENTH
+  // wholly-owned subsidiary: social/market research, monitoring &
+  // evaluation and technical consultancy for government, NGO,
+  // private-sector and institutional clients, per the client attachment
+  // docx/Research_and_Consultancy_Software_Development_Features.docx. Like
+  // every subsidiary before its first feature build, only the org structure
+  // (company, field offices, departments, starter policies) is seeded here
+  // under the subsidiary-lifecycle capability; the RC-MIS itself (32
+  // feature modules) is a specification in new docx/25, a future phase.
+  // seed.ts only — no code / schema / permission change, not a storefront
+  // seller (0 products) — consultancy is billed on contracts and
+  // timesheets, not a priced catalogue.
+  const research = await prisma.company.upsert({
+    where: { id: 'a1000000-0000-4000-8000-000000000008' },
+    update: {},
+    create: {
+      id: 'a1000000-0000-4000-8000-000000000008',
+      parentCompanyId: holding.id,
+      relationshipType: 'subsidiary',
+      ownershipPercent: 100,
+      name: 'Morise Research & Consultancy Ltd',
+      address: 'Plot 7, Acacia Avenue, Kololo, Kampala, Uganda',
+      currency: 'UGX',
+      financialYearStart: new Date('2026-01-01'),
+    },
+  });
+
+  // "Branches" model the head office plus the regional field offices that
+  // run fieldwork closer to each study area (docx/25, Section 2.4 —
+  // Geographic coverage and target population).
+  const researchBranches = [
+    ['b1000000-0000-4000-8000-000000000050', 'Kampala Head Office', 'Plot 7, Acacia Avenue, Kololo, Kampala'],
+    ['b1000000-0000-4000-8000-000000000051', 'Northern Regional Field Office', 'Gulu'],
+    ['b1000000-0000-4000-8000-000000000052', 'Eastern Regional Field Office', 'Mbale'],
+    ['b1000000-0000-4000-8000-000000000053', 'Western Regional Field Office', 'Mbarara'],
+    ['b1000000-0000-4000-8000-000000000054', 'Karamoja Field Station', 'Moroto'],
+  ] as const;
+  for (const [id, name, address] of researchBranches) {
+    await prisma.branch.upsert({
+      where: { id },
+      update: {},
+      create: { id, companyId: research.id, name, address },
+    });
+  }
+
+  // Twelve departments condensing the fourteen-node RC-MIS architecture in
+  // docx/25, Section 4 (Client Portal and Management Analytics are
+  // cross-cutting capabilities, not standing departments, so they are
+  // folded into IT/Systems and into Reports & Knowledge respectively).
+  const researchDepartments = [
+    ['d1000000-0000-4000-8000-000000000080', 'Client & Business Development', 'Client registration, categories (government, NGO, private-sector, institutional) and contact-person management; client communication history, requirements, meetings and satisfaction tracking; tender/RFP registration and RFP document storage; technical and financial proposals, concept notes and Expressions of Interest; proposal costing, consultant allocation, approval workflow, submission tracking and win/loss analysis.'],
+    ['d1000000-0000-4000-8000-000000000081', 'Contracts & Grants Management', 'Consultancy, research and subcontract agreements; grant management; contract value, funding source and payment schedules; milestones and deliverables; amendments and variations; renewal and expiry alerts; funder / client compliance tracking.'],
+    ['d1000000-0000-4000-8000-000000000082', 'Research Design & Methodology', 'Research project registration and reference numbers; objectives, questions, scope and methodology; geographic coverage and target population; quantitative, qualitative and mixed-method design; baseline / midterm / endline studies; impact assessments, feasibility and market research, socio-economic studies and needs assessments.'],
+    ['d1000000-0000-4000-8000-000000000083', 'Field Operations & Data Collection', 'Survey and digital-form creation; mobile and offline data collection; sampling framework, sample-size calculation and sample allocation; enumerator registration, recruitment, training, study-area assignment, daily targets and field payments; fieldwork scheduling, GPS/location capture and supervisor review.'],
+    ['d1000000-0000-4000-8000-000000000084', 'Data Quality & Management', 'Automated validation; duplicate, missing-data and outlier detection; GPS verification and interview-duration monitoring; back-checks and spot checks; data-quality dashboards and cleaning logs; data import/export, cleaning, versioning, the data dictionary / codebook and variable management.'],
+    ['d1000000-0000-4000-8000-000000000085', 'Data Analysis & Qualitative Research', 'Statistical analysis requests and workflow; statistical-output storage; integration with Excel, CSV, SPSS, Stata, R, Python, Power BI and Tableau; interview and focus-group management; transcription, translation, coding, themes, categories and research memos.'],
+    ['d1000000-0000-4000-8000-000000000086', 'Monitoring & Evaluation', 'Theory of Change, logical framework and results framework; indicators, baselines and targets; actual results and KPI management; outcome / output and impact-indicator tracking; data sources, means of verification and M&E dashboards.'],
+    ['d1000000-0000-4000-8000-000000000087', 'Reports, Deliverables & Knowledge Management', 'Inception, baseline, midterm, endline, evaluation, feasibility and market-research reports; policy briefs, research papers, executive summaries and presentations; review, approval, version control and digital signatures; the research library — previous studies, publications, datasets, methodologies, questionnaires, templates, case studies and lessons learned; the central document repository.'],
+    ['d1000000-0000-4000-8000-000000000088', 'Ethics & Compliance', 'Research ethics applications and approval tracking; consent-form management and participant consent records; research protocols, data-protection procedures and confidentiality agreements; data-retention policies and compliance checklists; research, fieldwork, security, data, financial and compliance risk registers with mitigation plans and escalation.'],
+    ['d1000000-0000-4000-8000-000000000089', 'Finance, Procurement & Subcontracting', 'Project budgets — personnel, fieldwork, transport, accommodation, per diem, data-collection, equipment and subcontractor costs; budget revisions and budget-versus-actual; client invoicing (milestone, retainer, timesheet and expense-based), payment tracking and accounts receivable; vendor / subcontractor registration, RFQs, purchase orders and supplier evaluation.'],
+    ['d1000000-0000-4000-8000-000000000090', 'Human Resources & Consultant Management', 'Researcher, consultant and enumerator profiles — principal investigators, research assistants, data analysts, statisticians and subject-matter experts; CVs, qualifications, certifications, areas of expertise, languages and geographic experience; availability, skills matching, workload and utilization; timesheets, billable hours and consultant rates; recruitment, training and performance history.'],
+    ['d1000000-0000-4000-8000-000000000091', 'IT, Client Portal & Systems', 'Questionnaire builder and survey-link / QR-code distribution; the client portal (project and progress visibility, deliverable review and approval, document exchange, requests and feedback); internal messaging, calendar and notifications; the management and analytics dashboard; role-based access control, audit trails and data-access logs.'],
+  ] as const;
+  for (const [id, name, description] of researchDepartments) {
+    await prisma.department.upsert({
+      where: { id },
+      update: {},
+      create: { id, companyId: research.id, name, description },
+    });
+  }
+  // Research & Consultancy starter policies are seeded further down, next to the Milling ones.
+
   await prisma.department.upsert({
     where: { id: 'd1000000-0000-4000-8000-000000000001' },
     update: {},
@@ -1169,6 +1241,25 @@ async function main() {
     if (!existing) {
       await prisma.companyPolicy.create({
         data: { id, companyId: 'a1000000-0000-4000-8000-000000000007', name, description, policyType, createdBy: mathias.id },
+      });
+    }
+  }
+
+  // Starter policies for the Research & Consultancy subsidiary (9 September 2026).
+  for (const [id, name, description, policyType] of [
+    ['p1000000-0000-4000-8000-000000000050', 'Research Ethics & Informed Consent', 'Every research project involving human participants requires ethics approval before fieldwork begins; enumerators must obtain and record informed consent from every respondent before an interview starts.', 'Compliance'],
+    ['p1000000-0000-4000-8000-000000000051', 'Data Protection & Participant Confidentiality', 'Personally identifying respondent data is anonymised or pseudonymised before analysis and storage; access to raw survey data is restricted to the assigned research team, and any data-sharing with a client or third party requires Ethics & Compliance review.', 'Compliance'],
+    ['p1000000-0000-4000-8000-000000000052', 'Fieldwork Safety & Security', 'Field teams travelling to a study area are registered with a check-in / check-out schedule and an emergency contact; travel to a flagged high-risk area requires prior sign-off from the project manager and a security briefing.', 'Operations'],
+    ['p1000000-0000-4000-8000-000000000053', 'Data Quality Assurance', 'Every completed questionnaire is validated for completeness, duplicates and outliers before acceptance; back-checks are conducted on a minimum sample of each enumerator’s interviews, and an enumerator falling below the agreed quality threshold is retrained or reassigned.', 'Operations'],
+    ['p1000000-0000-4000-8000-000000000054', 'Consultant & Enumerator Conflict of Interest', 'Every consultant, principal investigator and enumerator discloses any personal, financial or organisational interest in a client or study population before assignment; an undisclosed conflict discovered after assignment triggers immediate reassignment and a compliance review.', 'Compliance'],
+    ['p1000000-0000-4000-8000-000000000055', 'Contract, Grant & Proposal Compliance', 'Every proposal, contract and grant is checked against the funder or client’s compliance requirements (reporting schedule, permitted costs, procurement rules) before signature; a missed funder reporting deadline is escalated to the Managing Director within 48 hours.', 'Compliance'],
+  ] as const) {
+    const existing = await prisma.companyPolicy.findFirst({
+      where: { companyId: 'a1000000-0000-4000-8000-000000000008', name },
+    });
+    if (!existing) {
+      await prisma.companyPolicy.create({
+        data: { id, companyId: 'a1000000-0000-4000-8000-000000000008', name, description, policyType, createdBy: mathias.id },
       });
     }
   }

@@ -99,6 +99,7 @@ stack in `<text>`), no external refs — so each works as a file, an
 | `subsidiary-warehouse.svg` | 1600×420 | yes | Morise Warehouse Management Ltd (teal accent) |
 | `subsidiary-collateral.svg` | 1600×420 | yes | Morise Collateral Management Ltd (rose accent) |
 | `subsidiary-milling.svg` | 1600×420 | yes | Morise Milling Ltd — grain milling (amber accent; grinding-wheel + grain motif) |
+| `subsidiary-research-consultancy.svg` | 1600×420 | yes | Morise Research & Consultancy Ltd — research & consultancy services (indigo accent; bar-chart + magnifying-glass motif) |
 
 Per-subsidiary banners keep the navy ground and amber diamond and add
 **one** sector-accent hue — on the route line only.

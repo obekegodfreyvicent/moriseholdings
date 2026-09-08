@@ -41,6 +41,11 @@ export const SUBSIDIARY_META = {
     blurb: 'Grain procurement over the weighbridge, milling of maize, wheat, sorghum and millet, packaging and distribution of flour and by-products across five regional mills.',
     city: 'Kampala (Industrial Area)',
   },
+  'Morise Research & Consultancy Ltd': {
+    sector: 'Research & consultancy',
+    blurb: 'Social and market research, monitoring & evaluation, and technical consultancy for government, NGO, private-sector and institutional clients, with field teams across four regions.',
+    city: 'Kampala (Kololo)',
+  },
 };
 
 export function metaFor(name) {
@@ -66,6 +71,7 @@ const SUBSIDIARY_BANNER = {
   'Morise Warehouse Management Ltd': '/brand/banners/subsidiary-warehouse.svg',
   'Morise Collateral Management Ltd': '/brand/banners/subsidiary-collateral.svg',
   'Morise Milling Ltd': '/brand/banners/subsidiary-milling.svg',
+  'Morise Research & Consultancy Ltd': '/brand/banners/subsidiary-research-consultancy.svg',
 };
 
 // A subsidiary's own banner, with the group hero as a safe fallback for a
@@ -90,6 +96,7 @@ export const LEADERSHIP = [
 // News / press — illustrative group announcements for the News page. Demo
 // content; there is no press-release store in this build.
 export const NEWS = [
+  { date: '9 Sep 2026', tag: 'Portfolio', title: 'Morise Research & Consultancy Ltd incorporated as a wholly-owned subsidiary with field offices in four regions' },
   { date: '3 Sep 2026', tag: 'Portfolio', title: 'Morise Milling Ltd incorporated as a wholly-owned subsidiary with five regional mills' },
   { date: '29 Aug 2026', tag: 'Digital', title: 'Group storefront opens across all four subsidiaries' },
   { date: '28 Aug 2026', tag: 'Operations', title: 'Warehouse Management rolls out shift scheduling and payroll' },
