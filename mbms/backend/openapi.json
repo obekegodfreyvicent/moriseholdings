@@ -13090,6 +13090,9 @@
           "categoryId": {
             "type": "string"
           },
+          "branchId": {
+            "type": "string"
+          },
           "productCode": {
             "type": "string"
           },
@@ -13130,6 +13133,9 @@
         "type": "object",
         "properties": {
           "categoryId": {
+            "type": "string"
+          },
+          "branchId": {
             "type": "string"
           },
           "productType": {

@@ -9,6 +9,17 @@ export class CreateProductDto {
   @IsUUID()
   categoryId?: string;
 
+  // Storefront group catalogue (29 August 2026) added Product.branchId, but
+  // until now only the seed could set it — a product registered through the
+  // Admin screen was always company-wide/untagged. A multi-site subsidiary
+  // like Morise Milling Ltd produces a given flour at ONE named mill, so the
+  // branch has to be settable at registration. Optional still means
+  // "company-wide / head-office listing"; when given it is validated to
+  // belong to companyId.
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
   @IsString()
   productCode: string;
 
@@ -50,6 +61,10 @@ export class UpdateProductDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
 
   @IsOptional()
   @IsIn(['good', 'service'])

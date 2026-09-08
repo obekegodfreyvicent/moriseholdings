@@ -3027,6 +3027,118 @@ async function main() {
   await ensureService(collateral.id, cmcReporting.id, CMC_MBALE, 'CMC-5009', 'Warehouse Receipt Issuance — negotiable / non-negotiable (per receipt)', 'Receipt', 75_000, 3_000, 300);
   await ensureService(collateral.id, cmcReporting.id, CMC_KASESE, 'CMC-5010', 'Facility / Site Accreditation Assessment (per site)', 'Site', 1_800_000, 80, 15);
 
+  // ---- Morise Milling Ltd (5 September 2026) ----
+  // First product catalogue for the sixth operating subsidiary. Unlike the
+  // five service subsidiaries above, Morise Milling Ltd is a MANUFACTURER:
+  // it buys grain over the weighbridge, mills it and sells packaged flour,
+  // so its catalogue is mostly `good`, not `service`, and is the first to
+  // exercise Product.trackBatches / min-max stock levels — docx/23 §2.2
+  // (separate raw-material / finished-goods / packaging warehouses, FIFO-FEFO,
+  // min-max levels), §2.5 and §2.6 (batch numbers, expiry / best-before,
+  // batch traceability). Each item is attributed to the mill that produces
+  // it, so the storefront group catalogue tags it with the right site.
+  //
+  // Raw grain and packaging materials are deliberately seeded with NO
+  // unitPrice: they are internal inventory items feeding procurement and the
+  // packaging lines, and CustomerCatalogService only lists products whose
+  // unitPrice is set — so they stay off the customer storefront while still
+  // being stock-tracked in the Admin Inventory screens.
+  console.log('Seeding product catalogue for Morise Milling Ltd (5 September 2026)...');
+  await ensureStorefrontBooks(milling.id);
+  const MIL_KAMPALA = 'b1000000-0000-4000-8000-000000000040';
+  const MIL_JINJA = 'b1000000-0000-4000-8000-000000000041';
+  const MIL_MASINDI = 'b1000000-0000-4000-8000-000000000042';
+  const MIL_MBALE = 'b1000000-0000-4000-8000-000000000043';
+  const MIL_LIRA = 'b1000000-0000-4000-8000-000000000044';
+  const MIL_DEPOT = 'b1000000-0000-4000-8000-000000000045';
+
+  async function ensureMillProduct(opts: {
+    categoryId: string;
+    branchId: string;
+    productCode: string;
+    name: string;
+    description: string;
+    unitOfMeasure: string;
+    productType?: 'good' | 'service';
+    unitPrice: number | null;
+    stockQuantity: number;
+    reorderPoint: number;
+    minStockLevel?: number | null;
+    maxStockLevel?: number | null;
+    trackBatches?: boolean;
+  }) {
+    const data = {
+      categoryId: opts.categoryId,
+      branchId: opts.branchId,
+      productType: opts.productType ?? ('good' as const),
+      name: opts.name,
+      description: opts.description,
+      unitOfMeasure: opts.unitOfMeasure,
+      unitPrice: opts.unitPrice,
+      stockQuantity: opts.stockQuantity,
+      reorderPoint: opts.reorderPoint,
+      minStockLevel: opts.minStockLevel ?? null,
+      maxStockLevel: opts.maxStockLevel ?? null,
+      trackBatches: opts.trackBatches ?? false,
+    };
+    await prisma.product.upsert({
+      where: { companyId_productCode: { companyId: milling.id, productCode: opts.productCode } },
+      update: data,
+      create: { companyId: milling.id, productCode: opts.productCode, ...data },
+    });
+  }
+
+  const milMaize = await ensureCategory(milling.id, 'Maize Milling Products');
+  const milWheat = await ensureCategory(milling.id, 'Wheat Milling Products');
+  const milSmallGrain = await ensureCategory(milling.id, 'Millet & Sorghum Products');
+  const milByProducts = await ensureCategory(milling.id, 'By-Products & Animal Feed');
+  const milRawGrain = await ensureCategory(milling.id, 'Raw Grain (Intake)');
+  const milPackaging = await ensureCategory(milling.id, 'Packaging Materials');
+  const milServices = await ensureCategory(milling.id, 'Milling Services');
+
+  // Finished goods — maize (the volume line; Masindi mills it, the Kampala
+  // depot holds the retail packs).
+  await ensureMillProduct({ categoryId: milMaize.id, branchId: MIL_MASINDI, productCode: 'MIL-6001', name: 'Maize Flour — Grade 1 Sifted (50 kg bag)', description: 'Premium sifted white maize flour, Grade 1, milled from graded dry maize. Wholesale 50 kg woven bag. Batch-numbered with a six-month best-before date.', unitOfMeasure: 'Bag (50 kg)', unitPrice: 145_000, stockQuantity: 4_200, reorderPoint: 600, minStockLevel: 500, maxStockLevel: 8_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milMaize.id, branchId: MIL_MASINDI, productCode: 'MIL-6002', name: 'Maize Flour — Grade 1 Sifted (25 kg bag)', description: 'Premium sifted white maize flour in a 25 kg bag for institutional buyers — schools, hospitals and hotels.', unitOfMeasure: 'Bag (25 kg)', unitPrice: 75_000, stockQuantity: 3_100, reorderPoint: 500, minStockLevel: 400, maxStockLevel: 6_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milMaize.id, branchId: MIL_DEPOT, productCode: 'MIL-6003', name: 'Maize Flour — Grade 1 Sifted (10 kg pack)', description: 'Retail 10 kg printed pack of Grade 1 sifted maize flour, distributed from the Kampala depot.', unitOfMeasure: 'Pack (10 kg)', unitPrice: 32_000, stockQuantity: 5_600, reorderPoint: 800, minStockLevel: 700, maxStockLevel: 12_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milMaize.id, branchId: MIL_DEPOT, productCode: 'MIL-6004', name: 'Maize Flour — Grade 1 Sifted (2 kg pack)', description: 'Retail 2 kg printed pack of Grade 1 sifted maize flour for supermarket and duka trade.', unitOfMeasure: 'Pack (2 kg)', unitPrice: 7_500, stockQuantity: 14_000, reorderPoint: 2_500, minStockLevel: 2_000, maxStockLevel: 30_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milMaize.id, branchId: MIL_MASINDI, productCode: 'MIL-6005', name: 'Maize Meal / Posho — Grade 2 Whole (50 kg bag)', description: 'Whole-grain maize meal (posho), Grade 2, coarser extraction for institutional catering and relief supply.', unitOfMeasure: 'Bag (50 kg)', unitPrice: 125_000, stockQuantity: 2_700, reorderPoint: 400, minStockLevel: 350, maxStockLevel: 5_000, trackBatches: true });
+
+  // Finished goods — wheat (Jinja is the wheat mill).
+  await ensureMillProduct({ categoryId: milWheat.id, branchId: MIL_JINJA, productCode: 'MIL-6010', name: "Wheat Flour — Bakers' Grade (50 kg bag)", description: "High-protein bakers' wheat flour for commercial bakeries; consistent gluten specification verified per batch by the QC laboratory.", unitOfMeasure: 'Bag (50 kg)', unitPrice: 195_000, stockQuantity: 2_400, reorderPoint: 400, minStockLevel: 300, maxStockLevel: 5_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milWheat.id, branchId: MIL_JINJA, productCode: 'MIL-6011', name: 'Wheat Flour — Home Baking (2 kg pack)', description: 'All-purpose home baking wheat flour in a 2 kg retail pack.', unitOfMeasure: 'Pack (2 kg)', unitPrice: 9_500, stockQuantity: 9_800, reorderPoint: 1_500, minStockLevel: 1_200, maxStockLevel: 20_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milWheat.id, branchId: MIL_JINJA, productCode: 'MIL-6012', name: 'Whole-Wheat Atta Flour (10 kg pack)', description: 'Stone-ground whole-wheat atta flour for chapati and flatbread, 10 kg pack.', unitOfMeasure: 'Pack (10 kg)', unitPrice: 45_000, stockQuantity: 1_900, reorderPoint: 300, minStockLevel: 250, maxStockLevel: 4_000, trackBatches: true });
+
+  // Finished goods — millet & sorghum (Mbale).
+  await ensureMillProduct({ categoryId: milSmallGrain.id, branchId: MIL_MBALE, productCode: 'MIL-6020', name: 'Millet Flour (5 kg pack)', description: 'Pure finger-millet flour, 5 kg pack, milled at the Mbale small-grain line.', unitOfMeasure: 'Pack (5 kg)', unitPrice: 28_000, stockQuantity: 2_100, reorderPoint: 350, minStockLevel: 300, maxStockLevel: 4_500, trackBatches: true });
+  await ensureMillProduct({ categoryId: milSmallGrain.id, branchId: MIL_MBALE, productCode: 'MIL-6021', name: 'Sorghum Flour (5 kg pack)', description: 'Red sorghum flour, 5 kg pack, for porridge and traditional brewing customers.', unitOfMeasure: 'Pack (5 kg)', unitPrice: 24_000, stockQuantity: 1_750, reorderPoint: 300, minStockLevel: 250, maxStockLevel: 4_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milSmallGrain.id, branchId: MIL_MBALE, productCode: 'MIL-6022', name: 'Composite Porridge Flour — maize, millet & soya (1 kg pack)', description: 'Fortified composite porridge flour blended from maize, finger millet and soya, 1 kg pack. Blend ratio and fortification are fixed per the product quality specification.', unitOfMeasure: 'Pack (1 kg)', unitPrice: 8_500, stockQuantity: 11_500, reorderPoint: 2_000, minStockLevel: 1_800, maxStockLevel: 24_000, trackBatches: true });
+
+  // By-products of milling — sold on rather than written off (docx/23 §2.3
+  // "by-product and rework management").
+  await ensureMillProduct({ categoryId: milByProducts.id, branchId: MIL_MASINDI, productCode: 'MIL-6030', name: 'Maize Bran (50 kg bag)', description: 'Maize bran recovered from the sifting stage; sold to animal-feed compounders and dairy farmers.', unitOfMeasure: 'Bag (50 kg)', unitPrice: 45_000, stockQuantity: 3_400, reorderPoint: 500, minStockLevel: 400, maxStockLevel: 7_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milByProducts.id, branchId: MIL_JINJA, productCode: 'MIL-6031', name: 'Wheat Bran / Pollard (50 kg bag)', description: 'Wheat bran and pollard from the wheat milling line, a standard poultry and dairy feed ingredient.', unitOfMeasure: 'Bag (50 kg)', unitPrice: 52_000, stockQuantity: 2_600, reorderPoint: 400, minStockLevel: 350, maxStockLevel: 5_500, trackBatches: true });
+  await ensureMillProduct({ categoryId: milByProducts.id, branchId: MIL_MASINDI, productCode: 'MIL-6032', name: 'Maize Germ (50 kg bag)', description: 'Degermed maize germ, an oil-extraction and feed-industry input.', unitOfMeasure: 'Bag (50 kg)', unitPrice: 60_000, stockQuantity: 1_200, reorderPoint: 200, minStockLevel: 180, maxStockLevel: 2_500, trackBatches: true });
+  await ensureMillProduct({ categoryId: milByProducts.id, branchId: MIL_LIRA, productCode: 'MIL-6033', name: 'Dairy Meal — bran-based (70 kg bag)', description: 'Compounded dairy meal blended at Lira from maize bran, wheat pollard and mineral premix.', unitOfMeasure: 'Bag (70 kg)', unitPrice: 95_000, stockQuantity: 1_450, reorderPoint: 250, minStockLevel: 200, maxStockLevel: 3_000, trackBatches: true });
+
+  // Raw grain held in the silos — internal inventory, no storefront price.
+  // These are what the weighbridge books intake against (docx/23 §2.1).
+  await ensureMillProduct({ categoryId: milRawGrain.id, branchId: MIL_LIRA, productCode: 'MIL-6040', name: 'Raw Maize Grain — graded, dry (per ton)', description: 'Cleaned and graded dry maize grain held in the Lira silos awaiting milling. Internal raw-material stock item — booked in at the weighbridge against a supplier grain lot, not sold to customers.', unitOfMeasure: 'Ton', unitPrice: null, stockQuantity: 1_850, reorderPoint: 300, minStockLevel: 250, maxStockLevel: 4_000, trackBatches: true });
+  await ensureMillProduct({ categoryId: milRawGrain.id, branchId: MIL_JINJA, productCode: 'MIL-6041', name: 'Raw Wheat Grain — imported, milling grade (per ton)', description: 'Imported milling-grade wheat grain for the Jinja wheat line. Internal raw-material stock item.', unitOfMeasure: 'Ton', unitPrice: null, stockQuantity: 920, reorderPoint: 180, minStockLevel: 150, maxStockLevel: 2_200, trackBatches: true });
+  await ensureMillProduct({ categoryId: milRawGrain.id, branchId: MIL_MBALE, productCode: 'MIL-6042', name: 'Raw Millet & Sorghum Grain — graded (per ton)', description: 'Graded finger millet and red sorghum grain for the Mbale small-grain line. Internal raw-material stock item.', unitOfMeasure: 'Ton', unitPrice: null, stockQuantity: 410, reorderPoint: 90, minStockLevel: 80, maxStockLevel: 1_000, trackBatches: true });
+
+  // Packaging materials — internal, consumed by the packaging lines
+  // (docx/23 §2.6). No storefront price, no batch tracking.
+  await ensureMillProduct({ categoryId: milPackaging.id, branchId: MIL_KAMPALA, productCode: 'MIL-6050', name: 'Woven Polypropylene Bag — 50 kg, printed', description: 'Printed 50 kg woven polypropylene bag used across the wholesale flour and bran lines. Internal packaging-material stock item.', unitOfMeasure: 'Piece', unitPrice: null, stockQuantity: 48_000, reorderPoint: 8_000, minStockLevel: 6_000, maxStockLevel: 100_000 });
+  await ensureMillProduct({ categoryId: milPackaging.id, branchId: MIL_DEPOT, productCode: 'MIL-6051', name: 'Laminated Retail Pack — 2 kg, printed', description: 'Printed laminated 2 kg retail pack for the maize and wheat flour retail lines. Internal packaging-material stock item.', unitOfMeasure: 'Piece', unitPrice: null, stockQuantity: 96_000, reorderPoint: 15_000, minStockLevel: 12_000, maxStockLevel: 200_000 });
+
+  // Milling services — toll milling and grain handling sold to traders and
+  // cooperatives who bring their own grain (docx/23 §2.3, §2.2).
+  await ensureMillProduct({ categoryId: milServices.id, branchId: MIL_KAMPALA, productCode: 'MIL-6060', name: 'Contract / Toll Milling — maize (per ton milled)', description: "Customer-supplied maize milled on Morise lines and returned as packaged flour and bran, charged per ton milled. Yield and loss are recorded per production order against the customer's own grain lot.", unitOfMeasure: 'Ton milled', productType: 'service', unitPrice: 120_000, stockQuantity: 2_000, reorderPoint: 200 });
+  await ensureMillProduct({ categoryId: milServices.id, branchId: MIL_LIRA, productCode: 'MIL-6061', name: 'Grain Cleaning & Drying (per ton)', description: 'Destoning, cleaning and mechanical drying of customer grain to a milling-grade moisture level, charged per ton.', unitOfMeasure: 'Ton', productType: 'service', unitPrice: 45_000, stockQuantity: 3_000, reorderPoint: 300 });
+  await ensureMillProduct({ categoryId: milServices.id, branchId: MIL_LIRA, productCode: 'MIL-6062', name: 'Grain Storage — silo (per ton-month)', description: 'Segregated silo storage of customer grain with monthly stock statements, charged per ton-month.', unitOfMeasure: 'Ton-month', productType: 'service', unitPrice: 25_000, stockQuantity: 4_000, reorderPoint: 400 });
+  await ensureMillProduct({ categoryId: milServices.id, branchId: MIL_MBALE, productCode: 'MIL-6063', name: 'Grain Grading & Moisture Testing (per lot)', description: 'Laboratory grading of a grain lot — moisture, foreign matter, broken grain and aflatoxin screening — with a certificate of analysis, charged per lot.', unitOfMeasure: 'Lot', productType: 'service', unitPrice: 15_000, stockQuantity: 5_000, reorderPoint: 500 });
+
   // Marketing & Promos + CMS / Site Builder (28 August 2026): demo discount
   // codes and a promo banner for Morise Agro Ltd, plus a few storefront
   // content pages, so the two newly-activated Admin sections and their
