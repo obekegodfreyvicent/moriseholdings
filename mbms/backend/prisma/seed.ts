@@ -3230,6 +3230,65 @@ async function main() {
   await ensureMillProduct({ categoryId: milServices.id, branchId: MIL_LIRA, productCode: 'MIL-6062', name: 'Grain Storage — silo (per ton-month)', description: 'Segregated silo storage of customer grain with monthly stock statements, charged per ton-month.', unitOfMeasure: 'Ton-month', productType: 'service', unitPrice: 25_000, stockQuantity: 4_000, reorderPoint: 400 });
   await ensureMillProduct({ categoryId: milServices.id, branchId: MIL_MBALE, productCode: 'MIL-6063', name: 'Grain Grading & Moisture Testing (per lot)', description: 'Laboratory grading of a grain lot — moisture, foreign matter, broken grain and aflatoxin screening — with a certificate of analysis, charged per lot.', unitOfMeasure: 'Lot', productType: 'service', unitPrice: 15_000, stockQuantity: 5_000, reorderPoint: 500 });
 
+  // ---- Morise Research & Consultancy Ltd (9 September 2026) ----
+  // First services catalogue for the seventh operating subsidiary. Like
+  // Morise Collateral Management Ltd (Update 60), a research/consultancy
+  // firm is billed on contracts, retainers and timesheets rather than
+  // stock-moving goods — so every line here is `service`, priced per the
+  // standard unit a client's SOW would quote against (per study, per
+  // session, per dataset, per day), using the same ensureService() helper
+  // and CMC-style product-code convention as the Collateral catalogue.
+  console.log('Seeding services catalogue for Morise Research & Consultancy Ltd (9 September 2026)...');
+  await ensureStorefrontBooks(research.id);
+  const RC_KAMPALA = 'b1000000-0000-4000-8000-000000000050';
+  const RC_GULU = 'b1000000-0000-4000-8000-000000000051';
+  const RC_MBALE_RC = 'b1000000-0000-4000-8000-000000000052';
+  const RC_MBARARA = 'b1000000-0000-4000-8000-000000000053';
+  const RC_KARAMOJA = 'b1000000-0000-4000-8000-000000000054';
+  const rcStudies = await ensureCategory(research.id, 'Research & Evaluation Studies');
+  const rcField = await ensureCategory(research.id, 'Field Data Collection');
+  const rcAnalysis = await ensureCategory(research.id, 'Data Management & Analysis');
+  const rcME = await ensureCategory(research.id, 'Monitoring & Evaluation Services');
+  const rcConsult = await ensureCategory(research.id, 'Technical & Policy Consultancy');
+  const rcTraining = await ensureCategory(research.id, 'Training & Capacity Building');
+
+  // Research & Evaluation Studies — the core deliverable-generating
+  // engagements (docx/25 §2.4).
+  await ensureService(research.id, rcStudies.id, RC_KAMPALA, 'RC-7001', 'Baseline Study — design, fieldwork & report (per study)', 'Study', 18_000_000, 40, 8);
+  await ensureService(research.id, rcStudies.id, RC_KAMPALA, 'RC-7002', 'Midline / Endline Evaluation (per study)', 'Study', 22_000_000, 30, 6);
+  await ensureService(research.id, rcStudies.id, RC_KAMPALA, 'RC-7003', 'Impact Assessment (per study)', 'Study', 35_000_000, 15, 3);
+  await ensureService(research.id, rcStudies.id, RC_KAMPALA, 'RC-7004', 'Feasibility Study (per study)', 'Study', 15_000_000, 35, 7);
+  await ensureService(research.id, rcStudies.id, RC_KAMPALA, 'RC-7005', 'Market Research Study (per study)', 'Study', 12_000_000, 45, 9);
+  await ensureService(research.id, rcStudies.id, RC_MBARARA, 'RC-7006', 'Needs Assessment (per assessment)', 'Assessment', 9_000_000, 50, 10);
+
+  // Field Data Collection — fieldwork attributed to the regional offices
+  // closest to the study areas (docx/25 §2.5).
+  await ensureService(research.id, rcField.id, RC_GULU, 'RC-7010', 'Quantitative Household Survey — enumeration (per 100 interviews)', 'Batch (100 interviews)', 6_500_000, 200, 40);
+  await ensureService(research.id, rcField.id, RC_MBALE_RC, 'RC-7011', 'Qualitative Data Collection — focus groups & key informant interviews (per session)', 'Session', 850_000, 500, 100);
+  await ensureService(research.id, rcField.id, RC_KAMPALA, 'RC-7012', 'Mobile / Offline Digital Data Collection Setup (per project)', 'Project', 3_200_000, 60, 12);
+  await ensureService(research.id, rcField.id, RC_KARAMOJA, 'RC-7013', 'Enumerator Recruitment & Training (per cohort)', 'Cohort', 4_500_000, 25, 5);
+
+  // Data Management & Analysis (docx/25 §2.6).
+  await ensureService(research.id, rcAnalysis.id, RC_KAMPALA, 'RC-7020', 'Data Cleaning & Processing (per dataset)', 'Dataset', 2_800_000, 150, 30);
+  await ensureService(research.id, rcAnalysis.id, RC_KAMPALA, 'RC-7021', 'Quantitative Statistical Analysis (per dataset)', 'Dataset', 5_500_000, 120, 24);
+  await ensureService(research.id, rcAnalysis.id, RC_KAMPALA, 'RC-7022', 'Qualitative Analysis & Coding (per dataset)', 'Dataset', 4_200_000, 100, 20);
+  await ensureService(research.id, rcAnalysis.id, RC_KAMPALA, 'RC-7023', 'Data Visualization & Dashboard Setup (per dashboard)', 'Dashboard', 3_800_000, 40, 8);
+
+  // Monitoring & Evaluation Services (docx/25 §2.8).
+  await ensureService(research.id, rcME.id, RC_KAMPALA, 'RC-7030', 'M&E Framework Design — Theory of Change & Logframe (per framework)', 'Framework', 8_500_000, 30, 6);
+  await ensureService(research.id, rcME.id, RC_KAMPALA, 'RC-7031', 'Indicator Tracking System Setup (per system)', 'System', 6_000_000, 25, 5);
+  await ensureService(research.id, rcME.id, RC_MBARARA, 'RC-7032', 'Ongoing M&E Support (per quarter)', 'Quarter', 4_000_000, 80, 16);
+
+  // Technical & Policy Consultancy (docx/25 §2.1, §2.12).
+  await ensureService(research.id, rcConsult.id, RC_KAMPALA, 'RC-7040', 'Policy Advisory & Briefing (per engagement)', 'Engagement', 7_500_000, 60, 12);
+  await ensureService(research.id, rcConsult.id, RC_KAMPALA, 'RC-7041', 'Institutional Capacity Assessment (per assessment)', 'Assessment', 9_500_000, 35, 7);
+  await ensureService(research.id, rcConsult.id, RC_KAMPALA, 'RC-7042', 'Strategic Planning Facilitation (per workshop)', 'Workshop', 5_000_000, 45, 9);
+  await ensureService(research.id, rcConsult.id, RC_KAMPALA, 'RC-7043', 'Consultant Day Rate — Senior Researcher (per day)', 'Day', 950_000, 2_000, 400);
+
+  // Training & Capacity Building (docx/25 §2.11).
+  await ensureService(research.id, rcTraining.id, RC_GULU, 'RC-7050', 'Research Methods Training Workshop (per workshop)', 'Workshop', 3_500_000, 40, 8);
+  await ensureService(research.id, rcTraining.id, RC_MBALE_RC, 'RC-7051', 'M&E Capacity-Building Workshop (per workshop)', 'Workshop', 3_200_000, 40, 8);
+
   // Marketing & Promos + CMS / Site Builder (28 August 2026): demo discount
   // codes and a promo banner for Morise Agro Ltd, plus a few storefront
   // content pages, so the two newly-activated Admin sections and their
