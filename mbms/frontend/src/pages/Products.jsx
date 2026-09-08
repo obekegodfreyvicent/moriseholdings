@@ -37,7 +37,7 @@ export function ProductsPage() {
   async function load() {
     setError(null);
     try {
-      const query = { pageSize: 200 };
+      const query = { pageSize: 100 };
       if (companyFilter) query['filter[companyId]'] = companyFilter;
       const { items } = await apiRequestWithMeta('/products', query);
       setProducts(items);
