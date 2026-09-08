@@ -11,10 +11,12 @@ const GROUP_PERM = 'product.viewAll';
 
 // Every read of a product carries its owning company and producing branch,
 // so the Admin list can label which subsidiary/mill a row belongs to.
+// companyId is a logical reference on Product (no Prisma relation — see the
+// identical note in customer-catalog.service.ts), so the company name is
+// resolved in a separate batch query, not through `include`.
 const PRODUCT_INCLUDE = {
   category: true,
   branch: { select: { id: true, name: true } },
-  company: { select: { id: true, name: true } },
 } as const;
 
 function toResource(p: any) {
@@ -56,6 +58,18 @@ export class ProductsService {
     private readonly auditService: AuditService,
   ) {}
 
+  private async companyNames(ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids)].filter(Boolean);
+    if (unique.length === 0) return new Map();
+    const rows = await this.prisma.company.findMany({ where: { id: { in: unique } }, select: { id: true, name: true } });
+    return new Map(rows.map((r) => [r.id, r.name]));
+  }
+
+  private async withCompanyName<T extends { companyId: string }>(row: T) {
+    const names = await this.companyNames([row.companyId]);
+    return { ...row, company: { name: names.get(row.companyId) ?? null } };
+  }
+
   // GET /products — FR-PROD-01, scoped per BR-01
   async list(
     user: AuthenticatedUser,
@@ -90,7 +104,9 @@ export class ProductsService {
       }),
       this.prisma.product.count({ where }),
     ]);
-    return { items: rows.map(toResource), page, pageSize, total };
+    const names = await this.companyNames(rows.map((p) => p.companyId));
+    const items = rows.map((p) => toResource({ ...p, company: { name: names.get(p.companyId) ?? null } }));
+    return { items, page, pageSize, total };
   }
 
   // POST /products — FR-PROD-01 / AC-07
@@ -116,7 +132,7 @@ export class ProductsService {
       action: 'create',
       newValue: { productCode: product.productCode, name: product.name },
     });
-    return toResource(product);
+    return toResource(await this.withCompanyName(product));
   }
 
   // GET /products/{id} — FR-PROD-01
@@ -125,7 +141,7 @@ export class ProductsService {
     if (!isCompanyInScope(user, product.companyId, GROUP_PERM)) {
       throw new NotFoundAppException('Product not found.');
     }
-    return toResource(product);
+    return toResource(await this.withCompanyName(product));
   }
 
   // PATCH /products/{id} — FR-PROD-02, 03
@@ -147,7 +163,7 @@ export class ProductsService {
       previousValue: toResource(product),
       newValue: toResource(updated),
     });
-    return toResource(updated);
+    return toResource(await this.withCompanyName(updated));
   }
 
   // GET /product-categories?companyId=... — FR-PROD-01
