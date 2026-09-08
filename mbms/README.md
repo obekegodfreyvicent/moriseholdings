@@ -2344,6 +2344,68 @@ get out of sync with a manually-deleted `dist/`. For the same reason, run
 of FR-AUTH-04's password policy; complexity (uppercase + lowercase + digit)
 is fixed, not configurable.
 
+## Running it — Dockerized (9 September 2026)
+
+The backend, the Admin app and the Customer Storefront are each
+containerized, alongside the Postgres/Redis containers `docker-compose.yml`
+already had. `docker compose up` builds and runs all five:
+
+```bash
+docker compose up -d --build
+#   postgres    localhost:5442  (unchanged)
+#   redis       localhost:6390  (unchanged)
+#   backend     http://localhost:3001/api/v1   (Swagger at /api/v1/docs)
+#   frontend    http://localhost:5173          (the Admin app)
+#   storefront  http://localhost:5174          (the Customer Storefront)
+
+# First run only (or after a schema change) — apply migrations and seed
+# demo data from the host, against the same Postgres the stack uses:
+cd backend && npx prisma migrate deploy && npx prisma db seed
+```
+
+**Images:**
+
+| Service | Dockerfile | Base image(s) | What it does |
+|---|---|---|---|
+| `backend` | `backend/Dockerfile` | `node:20-bookworm-slim` (build + runtime) | Two-stage build: `npm ci` → `prisma generate` → `npm run build` (`nest build`, **not** a bare `tsc` — see the OpenAPI section below for why that matters); the runtime stage copies only the compiled `dist/`, the generated Prisma Client, and production `node_modules`, then runs `node dist/main.js`. |
+| `frontend` | `frontend/Dockerfile` + `frontend/nginx.conf` | `node:20-alpine` (build) → `nginx:1.27-alpine` (runtime) | `npm run build` (Vite) produces a static bundle; nginx serves it and reverse-proxies `/api/*` to the `backend` container by its Compose service name — the same relationship `vite.config.js`'s dev-server `proxy` block gives it locally, so the app's own `fetch('/api/v1/...')` calls need no change and no CORS configuration either way. A `try_files … /index.html` fallback handles client-side routing (a deep link to `/companies` or a page reload still resolves). |
+| `storefront` | `storefront/Dockerfile` + `storefront/nginx.conf` | same as `frontend` | Identical pattern, for the customer-facing app on its own port. |
+
+**Why `node:20-bookworm-slim` and not Alpine for the backend:** Prisma's
+query-engine binary is compiled against glibc. Building on Alpine (musl
+libc) and running on Debian glibc — or vice versa — is a well-known way to
+get a Prisma "Query Engine could not be found" failure at container start
+that never shows up locally. Using the same Debian-based image for both the
+build and runtime stages sidesteps it entirely; the frontend images have no
+such constraint (no native bindings involved) so they use the smaller
+Alpine-based Node image to build.
+
+**Why the runtime stage still installs OpenSSL:** the bare `-slim` image
+doesn't ship it, and Prisma's engine can't detect a libssl version to link
+against without it — it falls back to guessing, which is fragile across
+Debian point releases. `apt-get install -y openssl ca-certificates` is
+Prisma's own documented fix and appears in both the build and runtime
+stages (the build stage needs it too, to run `prisma generate` without a
+warning).
+
+**Why migrations/seeding aren't run automatically inside the container:**
+`prisma db seed` needs `ts-node` and `typescript`, both devDependencies the
+runtime image deliberately omits to stay small and reduce its attack
+surface. Seeding has always been a host-run step in this project (even
+before the backend itself was containerized, when only Postgres/Redis
+were) — `npx prisma migrate deploy && npx prisma db seed` from `backend/`
+still works unchanged, since the containerized Postgres is reachable at the
+same `localhost:5442` the host has always used.
+
+**Verified end to end:** all three images build clean; `docker compose up`
+brings up all five containers, `backend` reporting healthy against
+`postgres`'s Compose healthcheck; existing seeded data (8 companies, 81
+products) survives a container recreate because it lives in the
+`mbms_pg_data` named volume, not in the container itself; a login + page
+load through each of `frontend` and `storefront` succeeds with the request
+round-tripping through nginx to the `backend` container and back, with zero
+browser console errors on either app.
+
 ## OpenAPI / Swagger API documentation
 
 The backend generates its own OpenAPI 3 contract from the code — it is not

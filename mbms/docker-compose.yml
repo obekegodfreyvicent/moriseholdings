@@ -11,6 +11,11 @@ services:
       - "5442:5432"
     volumes:
       - mbms_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mbms -d mbms_identity_org"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -18,6 +23,65 @@ services:
     restart: unless-stopped
     ports:
       - "6390:6379"
+
+  # Backend API (NestJS/Fastify + Prisma) — see backend/Dockerfile.
+  # DATABASE_URL/PORT below override backend/.env's host-facing values
+  # (localhost:5442) with the in-network ones (Compose's DNS resolves
+  # "postgres" to the container above, on its unmapped internal port 5432);
+  # every other variable (JWT secrets, PASSWORD_MIN_LENGTH) still comes from
+  # backend/.env via env_file.
+  #
+  # First run only — apply migrations and seed demo data from the host,
+  # against the same Postgres this container uses (see mbms/README.md
+  # "Running it — Dockerized"):
+  #   cd backend && npx prisma migrate deploy && npx prisma db seed
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mbms-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://mbms:mbms_dev_password@postgres:5432/mbms_identity_org?schema=public
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Staff Admin app (React/Vite, built + served by nginx) — see
+  # frontend/Dockerfile + frontend/nginx.conf. Host port 5173 matches the
+  # Vite dev-server port so the URL is the same whether you run it with
+  # `npm run dev` or via this compose file.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mbms-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  # Customer Storefront (React/Vite, built + served by nginx) — see
+  # storefront/Dockerfile + storefront/nginx.conf. Host port 5174 matches
+  # its Vite dev-server port for the same reason as frontend above.
+  storefront:
+    build:
+      context: ./storefront
+      dockerfile: Dockerfile
+    container_name: mbms-storefront
+    restart: unless-stopped
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
 
 volumes:
   mbms_pg_data:

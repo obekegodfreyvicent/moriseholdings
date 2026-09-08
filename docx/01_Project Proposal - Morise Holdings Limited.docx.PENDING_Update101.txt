@@ -1,0 +1,32 @@
+"01_Project Proposal - Morise Holdings Limited.docx" was open in LibreOffice
+during the "Dockerized Backend, Admin App and Customer Storefront" pass
+(9 September 2026), so this section was NOT applied automatically. Every
+other doc 02-18 received it as "Implementation Status Update 101".
+
+Numbered heading: the next integer after the last "NN. Implementation Status
+Update N" heading in the file (it is "113. ..." once the pending Update
+88-100 sections are all pasted). Paste this in as a new Heading 1 section at
+the end, then delete this file.
+
+============================================================
+
+HEADING (Heading 1 style):
+113. Implementation Status Update 101 (9 September 2026) — Dockerized Backend, Admin App and Customer Storefront
+
+BODY (Body Text style, one paragraph per block below):
+
+An administrator asked to dockerize the backend, the Admin app and the Customer Storefront. Until now only Postgres and Redis ran as containers (mbms/docker-compose.yml); the three application services ran natively. This update adds a Dockerfile for each of the three, wires them into docker-compose.yml alongside Postgres and Redis, and verifies the whole stack end to end.
+
+backend/Dockerfile is a two-stage build on node:20-bookworm-slim (deliberately not Alpine) for both stages: npm ci, prisma generate, then npm run build — which runs nest build, not a bare tsc, so the @nestjs/swagger CLI plugin still populates the OpenAPI document's schemas exactly as it does outside Docker. The runtime stage copies over only the compiled dist/, the already-generated Prisma Client, and production node_modules, then runs node dist/main.js. Both stages install openssl and ca-certificates explicitly — Prisma's own documented fix for a libssl-detection warning on the bare -slim image. Using the same glibc-based Debian image for both stages avoids the well-known "Query Engine could not be found" failure that mixing an Alpine build with a glibc runtime can cause.
+
+frontend/Dockerfile and storefront/Dockerfile follow a matching two-stage pattern on node:20-alpine (build) and nginx:1.27-alpine (runtime): npm run build produces a static Vite bundle, and a bundled nginx.conf reverse-proxies /api/* to the backend container by its Compose service name — the same relationship vite.config.js's dev-server proxy gives each app locally, so no code change and no CORS configuration are needed either way.
+
+docker-compose.yml gains backend, frontend and storefront services: backend waits on a new Postgres healthcheck before starting and gets its DATABASE_URL/PORT overridden to the in-network Postgres host; frontend and storefront are exposed on the same host ports their Vite dev servers already used (5173 / 5174). Migrations and seeding are still run from the host, unchanged from before the backend itself was containerized.
+
+Verified end to end: all three images build clean; docker compose up -d --build brings up all five containers healthy; existing seeded data survived a Postgres container recreate (lives in the mbms_pg_data named volume); a staff login and a storefront page load both succeeded through the nginx-to-backend proxy with zero console errors. No schema, endpoint or permission change; openapi.json unchanged.
+
+HEADING (Heading 2 style):
+Impact on this document
+
+BODY (Body Text style):
+Scope note — a deployment-mechanics change (containerizing three already-working services), not a new feature. Additive only; no change to project scope framing, phasing, cost basis or architecture position.
