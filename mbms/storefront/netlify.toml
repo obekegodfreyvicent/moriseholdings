@@ -1,0 +1,30 @@
+# Customer Storefront — Netlify site config (9 September 2026).
+#
+# This is a Vite React SPA with no server of its own; in local/Docker use
+# it calls its own NestJS backend at relative /api/v1/* paths, proxied by
+# vite's dev server (see vite.config.js) or by the storefront/Dockerfile's
+# nginx.conf. Netlify hosts static files only, so until the backend has a
+# public URL, /api/v1/* calls from this deployed site will fail (expected
+# — see mbms/README.md's Netlify section). Once a backend URL exists,
+# uncomment the [[redirects]] block below and set BACKEND_URL to it.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Uncomment once the backend is reachable on the public internet, so the
+# storefront's relative /api/v1/* fetches reach it. This MUST stay above
+# the SPA catch-all redirect below — Netlify evaluates [[redirects]] blocks
+# in file order, and the catch-all would otherwise swallow /api/* first.
+#
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://BACKEND_URL/api/:splat"
+#   status = 200
+#   force = true
+
+# Client-side routing (react-router-dom) — let the SPA handle every path.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -3612,6 +3612,59 @@ language, for all 9 official languages.
 
 ---
 
+## Admin app and Customer Storefront connected to Netlify (9 September 2026)
+
+An administrator asked to connect the project to Netlify. Netlify hosts
+static sites and serverless functions only — it cannot run the stateful
+NestJS `backend` (+ Postgres/Redis) that both front-end apps depend on for
+every API call, so this connects the two **static, front-end-only** apps;
+the backend stays wherever it is already reachable (locally / Docker for
+now), and both deployed apps' `/api/v1/*` calls will fail until it has a
+public URL — an explicit, agreed trade-off ("wire up Netlify now, backend
+later").
+
+- Two Netlify sites, each linked to its own subdirectory of this monorepo
+  (Netlify CLI, `obekegodfrey3@gmail.com` account, team
+  `obekegodfrey3's team`): **`morise-storefront`**
+  (<https://morise-storefront.netlify.app>) → `mbms/storefront`;
+  **`morise-admin`** (<https://morise-admin.netlify.app>) → `mbms/frontend`.
+- New `netlify.toml` in each app directory: `[build] command = "npm run
+  build"`, `publish = "dist"`; a `[[redirects]]` catch-all (`/* → /index.html
+  200`) so `react-router-dom`'s client-side routes survive a hard refresh /
+  direct link (verified — a deep route on each site returns **200**, not a
+  Netlify 404); a **commented-out** `/api/* → https://BACKEND_URL/api/:splat`
+  proxy redirect, ready to uncomment (it must stay *above* the catch-all in
+  the file — Netlify evaluates `[[redirects]]` in order) once the backend
+  has a public URL. Neither app's code changed — both already call the
+  backend at relative `/api/v1/*` paths (see `src/lib/api.js`), the same
+  paths `vite.config.js`'s dev proxy and each Dockerfile's `nginx.conf`
+  already reverse-proxy locally, so the Netlify redirect is the natural
+  production equivalent once a backend URL exists.
+- Each site was built (`npm run build`) and deployed with an initial
+  manual production deploy (`netlify deploy --prod --dir=dist`) so both
+  have a **live URL today**, verified with `curl` (root and a deep route on
+  each, both **200**). **Continuous deployment from GitHub pushes was
+  deliberately not set up** — linking a Netlify site to a Git repository
+  for auto-deploys requires installing the Netlify GitHub App, a one-time
+  authorisation only the repository owner can grant by clicking through
+  Netlify's UI; an administrator who wants that should open each site's
+  **Site configuration → Build & deploy → Continuous deployment** in the
+  Netlify dashboard, connect it to `obekegodfreyvicent/moriseholdings`, and
+  set **Base directory** to `mbms/storefront` or `mbms/frontend`
+  respectively (the `netlify.toml` in each already supplies the build
+  command and publish directory once that base is set).
+- `.gitignore` gained a `.netlify` entry (added automatically by `netlify
+  link`, which writes a local, machine-specific `.netlify/state.json` with
+  the linked site ID — correctly not committed).
+- **No backend, schema, endpoint, permission or application-code change.**
+  Recorded as `Implementation Status Update 104` (docs 02–18); cross-ref
+  addenda on docs 19–25; `Implementation Status Note 81` in
+  `Multi_Holdings_Limited_Software_Development_Procedures.docx`;
+  `morise.docx` as **Update 61**; `01_Project Proposal` applied directly
+  (lock re-confirmed stale). Pre-edit copies in `docx_backup93/`.
+
+---
+
 ## Running the system
 
 Full instructions are in **`mbms/README.md`**. In short:
@@ -3820,6 +3873,8 @@ status log):
 77. `… — Storefront Language Set Scoped to 9 Official Languages` (Update 102; Update 59 in `morise.docx`) — an administrator asked for the Customer Storefront to be localised and globalised into a specific named set, grouped exactly as given: **Uganda — Official/Global** (English), **Uganda — Official/Africa** (Kiswahili), **Uganda — Bantu** (Luganda), **Africa** (Arabic), **Europe** (German, French, Spanish, Italian), **The Americas** (Portuguese). These 9 languages were already shipped fully translated (Updates 29–31) inside a much larger **43-language** aspirational list — 34 English-fallback placeholders plus two partially-translated regional languages (Runyankole, Acholi), added Update 30. `mbms/storefront/src/locales/index.js` **`LANGUAGE_LIST`** and **`LOCALES`** are now scoped to **exactly these 9**, retiring the placeholder/partial entries; every remaining language is complete, so the picker's "English for now" caveat no longer applies to any option, and `TRANSLATED_LANGS` now equals `FULLY_TRANSLATED_LANGS`. Region groups in the picker match the administrator's naming exactly. Database content localisation, currency/figure localisation and digit transliteration (Updates 32/33) already covered exactly this 9-language set — no change needed there. **No backend, schema, endpoint or permission change.** `vite build` clean (74 modules). **04 SRS / 07 System Design / 10 Test Plan / 14 User Manual / 18 UI-UX** carry the detail; the rest a short note. Cross-ref addenda on docs 19–25; `Implementation Status Note 79` in `Multi_Holdings_Limited_Software_Development_Procedures.docx`; `01_Project Proposal` staged as `*.PENDING_Update102.txt` (LibreOffice-locked). Pre-edit copies in `docx_backup91/`.
 
 78. `… — Every Non-English Official Language Reaches 100% Key Parity` (Update 103; Update 60 in `morise.docx`) — an administrator clarified Update 102's scope: every word on the storefront, apart from proper nouns like "Morise Holdings", must change with the chosen language for all 9 official languages. Auditing `mbms/storefront/src/locales/en.js`'s **528-key** catalogue against each translated table found the same **66 keys** missing from **every one** of the 8 non-English languages — 87.5% coverage across the board, entirely from features added after the original translation passes and never backfilled (the group-storefront / subsidiary-directory keys, Update 48; the delivery-confirmation / Morise e-Stamp keys, Updates 94–96). All 66 keys are now translated into all 8 languages (fr/es/pt/de/it in `eu.js`; sw/lg/ar in `regional.js` — 528 new key/value pairs), reusing each language's already-established terminology (e.g. French *succursale*/German *Filiale* for "branch" vs. French *filiale*/German *Tochtergesellschaft* for "subsidiary", matching the existing `corp.whollyOwned` wording). "Morise e-Stamp" and company/subsidiary proper nouns stay untranslated. **Every language now carries 528/528 keys — 100% parity.** A source scan for hard-coded JSX text bypassing `t()` (capitalised text nodes plus `placeholder`/`aria-label`/`title`/`alt` attributes across `src/pages` and `src/components`) found nothing outstanding beyond the "MORISE" wordmark and one example person-name placeholder — both proper nouns. **No backend, schema, endpoint or permission change** — locale data only. `vite build` clean (74 modules); the dockerized `storefront` container was rebuilt and redeployed, and the live built bundle was checked directly with `curl` to confirm the new strings actually ship (German *Tochtergesellschaften*, Swahili *Kampuni Tanzu*, Arabic *الشركات التابعة*, Italian *Segnala un problema*, etc.), not just exist in source. **04 SRS / 10 Test Plan / 14 User Manual / 18 UI-UX** carry the detail; the rest a short note. Cross-ref addenda on docs 19–25; `Implementation Status Note 80` in `Multi_Holdings_Limited_Software_Development_Procedures.docx`; `01_Project Proposal`'s `.~lock` file was re-checked (`pgrep`/`lsof`), confirmed stale again, and this entry was pasted in directly as section 115 — no sidecar needed. Pre-edit copies in `docx_backup92/`.
+
+79. `… — Admin App and Customer Storefront Connected to Netlify` (Update 104; Update 61 in `morise.docx`) — an administrator asked to connect the project to Netlify. Netlify hosts static sites / serverless functions only, so this connects the two static front-end apps — the stateful NestJS `backend` (+ Postgres/Redis) cannot run there and stays wherever it is already reachable; an explicit, agreed trade-off ("wire up Netlify now, backend later") means both deployed apps' `/api/v1/*` calls fail until the backend has a public URL. Two Netlify sites created via CLI (`obekegodfrey3@gmail.com` account): **`morise-storefront`** (<https://morise-storefront.netlify.app>) → `mbms/storefront`; **`morise-admin`** (<https://morise-admin.netlify.app>) → `mbms/frontend`. New `netlify.toml` in each app directory (`npm run build` → `dist`; a SPA catch-all redirect so `react-router-dom` routes survive a hard refresh — verified 200, not a Netlify 404; a commented-out `/api/*` proxy redirect ready to uncomment once a backend URL exists, positioned above the catch-all since Netlify evaluates redirects in file order). **No application code changed** — both apps already call the backend at relative `/api/v1/*` paths, the same paths each Dockerfile's `nginx.conf` already reverse-proxies locally. Each site built and given an **initial manual production deploy** (`netlify deploy --prod`), verified live with `curl` (root + a deep route, both 200 on each). **Continuous deployment from GitHub was deliberately not set up** — that requires installing the Netlify GitHub App, a one-time authorisation only the repo owner can grant by clicking through Netlify's UI (steps documented in `mbms/README.md`'s Netlify section: connect `obekegodfreyvicent/moriseholdings`, set Base directory to `mbms/storefront` / `mbms/frontend`). `.gitignore` gained a `.netlify` entry (auto-added by `netlify link`, keeps the machine-local linked-site-ID file out of git). **No backend, schema, endpoint or permission change.** Cross-ref addenda on docs 19–25; `Implementation Status Note 81` in `Multi_Holdings_Limited_Software_Development_Procedures.docx`; `01_Project Proposal` applied directly (lock re-confirmed stale). Pre-edit copies in `docx_backup93/`.
 
 Two independent "Sprint N" numbering schemes exist in this set — see
 `mbms/README.md` ("Sprint 10" section) and project memory before treating a
