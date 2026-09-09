@@ -125,3 +125,21 @@ The SVGs are mirrored into `mbms/frontend/public/brand/banners/` and
 Keep the two `public/brand/banners/` copies in sync with
 `brand/banners/`, and keep the banner visual language aligned with the
 logo above.
+
+---
+
+# Print collateral — `brand/print/`
+
+Print-ready marketing pieces on the same brand system — see
+[`brand/print/README.md`](print/README.md).
+
+| File | Piece | Size |
+|------|-------|------|
+| `print/business-cards.html` | Director business cards, front + back | 85 × 55 mm |
+| `print/flyer.html` | Group capability flyer | A4 portrait, full-bleed |
+| `print/brochure.html` | Group profile brochure, tri-fold | A4 landscape, 2 sheets |
+| `print/_brand.css` | Shared palette + type (Inter embedded) + logo / motif components | — |
+
+Each HTML file is self-contained and renders to exact print size; rendered
+`*.pdf` and `previews/*.png` are checked in beside the source. Phone numbers in
+the files are placeholders (`+256 (0)0 000 0000`) — replace before printing.

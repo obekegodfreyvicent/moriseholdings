@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morise Holdings — Director Business Cards</title>
+<link rel="stylesheet" href="_brand.css">
+<!--
+  PLACEHOLDER PHONE NUMBERS — replace "+256 (0)0 000 0000" with each
+  director's real line before sending to print. Email + web are live-pattern.
+  Print: size = 85 x 55 mm, one card per page (front, then back, then next).
+  A print shop can impose several to a sheet from this same PDF.
+-->
+<style>
+  @page{ size:85mm 55mm; margin:0; }
+
+  .card{
+    width:85mm; height:55mm;
+    page-break-after:always;
+    display:flex; flex-direction:column;
+    position:relative; overflow:hidden;
+    break-inside:avoid;
+  }
+  .card:last-child{ page-break-after:auto; }
+
+  /* ---------------- FRONT ---------------- */
+  .front{ padding:5mm 6.2mm 4.6mm; }
+  .front .watermark .mk{ width:50mm; height:50mm; right:-13mm; bottom:-15mm; opacity:.07; }
+  .front .topbar{ display:flex; align-items:flex-start; justify-content:space-between; }
+  .front .tile{ width:8.6mm; height:8.6mm; border-radius:22%; }
+  .front .tag{
+    text-align:right; font-size:5.2pt; font-weight:600; letter-spacing:2px;
+    color:#B9C6D6; text-transform:uppercase; line-height:1.5; padding-top:.4mm;
+  }
+  .front .who{ margin-top:auto; }
+  .front .name{
+    font-size:12pt; font-weight:800; letter-spacing:.2px; color:#fff; line-height:1.04;
+  }
+  .front .role{
+    margin-top:1mm; font-size:6.2pt; font-weight:700; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--amber-soft);
+  }
+  .front .contact{
+    margin-top:2.7mm; display:flex; flex-direction:column; gap:.95mm;
+    font-size:6.6pt; font-weight:500; color:#E4EAF1; letter-spacing:.2px;
+  }
+  .front .contact span{ display:flex; align-items:baseline; gap:1.8mm; }
+  .front .contact span::before{
+    content:""; width:2.4mm; height:2px; background:var(--amber); flex:none;
+    transform:translateY(-1px);
+  }
+  .front .foot{
+    margin-top:2.4mm; padding-top:1.7mm; border-top:1px solid rgba(255,255,255,.16);
+    font-size:4.8pt; font-weight:700; letter-spacing:2.3px; text-transform:uppercase;
+    color:#9FB0C4; display:flex; justify-content:space-between; gap:3mm;
+  }
+  .front .foot .rgtd{ font-weight:600; letter-spacing:1px; text-transform:none; color:#8DA0B6; }
+
+  /* ---------------- BACK ---------------- */
+  .back{
+    align-items:center; justify-content:center; text-align:center;
+    padding:6mm; background:var(--paper);
+    border:0;
+  }
+  .back::before{ /* subtle navy corner keystone */
+    content:""; position:absolute; top:-14mm; left:-14mm; width:28mm; height:28mm;
+    background:var(--navy); opacity:.06; transform:rotate(45deg);
+  }
+  .back .lockup .tile{ width:12mm; height:12mm; border-radius:22%; }
+  .back .lockup .wm b{ font-size:15pt; }
+  .back .lockup .wm i{ font-size:5.4pt; }
+  .back .tagline{
+    margin-top:3.4mm; font-size:6.6pt; font-weight:600; letter-spacing:.6px;
+    color:var(--navy);
+  }
+  .back .tagline b{ color:var(--amber); font-weight:700; }
+  .back .subs{
+    margin-top:3.6mm; display:grid; grid-template-columns:repeat(3,auto);
+    gap:1.3mm 4.2mm; justify-content:center;
+  }
+  .back .subs span{
+    font-size:4.7pt; font-weight:700; letter-spacing:.9px; text-transform:uppercase;
+    color:var(--slate); display:flex; align-items:center; gap:1.3mm;
+  }
+  .back .subs span::before{ content:""; width:1.6mm; height:1.6mm; border-radius:50%; flex:none; }
+  .s-agro::before{ background:var(--agro); }
+  .s-mill::before{ background:var(--milling); }
+  .s-log::before{ background:var(--logistics); }
+  .s-cf::before{ background:var(--clearing); }
+  .s-wh::before{ background:var(--warehouse); }
+  .s-col::before{ background:var(--collateral); }
+
+  .screen-grid{ max-width:900px; margin:0 auto; }
+  .pair{ display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start; margin-bottom:6px; }
+  .pair .surface{ margin:0 0 10px; }
+  .pair .cap{ color:#cfd6df; font-size:11px; font-weight:700; letter-spacing:1.6px;
+    text-transform:uppercase; width:100%; }
+
+  @media print{
+    .screen-grid,.pair{ display:contents; }
+    .pair .cap{ display:none; }
+    .surface{ margin:0; box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="screen-note">
+  <h1>Director business cards — Morise Holdings Limited</h1>
+  <p>Trim size <code>85 &times; 55 mm</code>. Each card prints as its own page: front, then
+  back, then the next director. Backgrounds run full-bleed, so no crop marks are needed for a
+  short run &mdash; a print shop can impose multiples from this file. Replace the placeholder
+  phone lines (<code>+256 (0)0 000 0000</code>) with real numbers before printing.</p>
+</div>
+
+<div class="screen-grid">
+
+  <!-- 1 — Managing Director -->
+  <div class="pair">
+    <div class="cap">Okurut Mathias &mdash; front / back</div>
+    <div class="surface"><div class="card front navy-field">
+      <div class="watermark"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></div>
+      <div class="topbar">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="tag">Morise Holdings<br>Limited</span>
+      </div>
+      <div class="who">
+        <div class="name">Okurut Mathias</div>
+        <div class="role">Managing Director</div>
+        <div class="contact">
+          <span>+256 (0)0 000 0000</span>
+          <span>m.okurut@morise-holdings.com</span>
+          <span>morise-holdings.com</span>
+        </div>
+        <div class="foot">
+          <span>Morise Holdings Limited</span>
+          <span class="rgtd">Kira, Wakiso &middot; Uganda</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="surface"><div class="card back">
+      <div class="lockup">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+      </div>
+      <div class="tagline">Every input. Every mile. <b>Every store.</b></div>
+      <div class="subs">
+        <span class="s-agro">Agro</span>
+        <span class="s-mill">Milling</span>
+        <span class="s-log">Logistics</span>
+        <span class="s-cf">Clearing&nbsp;&amp;&nbsp;Fwd</span>
+        <span class="s-wh">Warehousing</span>
+        <span class="s-col">Collateral</span>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 2 — Group IT & Systems -->
+  <div class="pair">
+    <div class="cap">Obeke Godfrey &mdash; front / back</div>
+    <div class="surface"><div class="card front navy-field">
+      <div class="watermark"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></div>
+      <div class="topbar">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="tag">Morise Holdings<br>Limited</span>
+      </div>
+      <div class="who">
+        <div class="name">Obeke Godfrey</div>
+        <div class="role">Director &mdash; Group IT &amp; Systems</div>
+        <div class="contact">
+          <span>+256 (0)0 000 0000</span>
+          <span>g.obeke@morise-holdings.com</span>
+          <span>morise-holdings.com</span>
+        </div>
+        <div class="foot">
+          <span>Morise Holdings Limited</span>
+          <span class="rgtd">Kira, Wakiso &middot; Uganda</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="surface"><div class="card back">
+      <div class="lockup">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+      </div>
+      <div class="tagline">Every input. Every mile. <b>Every store.</b></div>
+      <div class="subs">
+        <span class="s-agro">Agro</span>
+        <span class="s-mill">Milling</span>
+        <span class="s-log">Logistics</span>
+        <span class="s-cf">Clearing&nbsp;&amp;&nbsp;Fwd</span>
+        <span class="s-wh">Warehousing</span>
+        <span class="s-col">Collateral</span>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 3 — Group Finance -->
+  <div class="pair">
+    <div class="cap">Alan Smith &mdash; front / back</div>
+    <div class="surface"><div class="card front navy-field">
+      <div class="watermark"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></div>
+      <div class="topbar">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="tag">Morise Holdings<br>Limited</span>
+      </div>
+      <div class="who">
+        <div class="name">Alan Smith</div>
+        <div class="role">Director &mdash; Group Finance</div>
+        <div class="contact">
+          <span>+256 (0)0 000 0000</span>
+          <span>a.smith@morise-holdings.com</span>
+          <span>morise-holdings.com</span>
+        </div>
+        <div class="foot">
+          <span>Morise Holdings Limited</span>
+          <span class="rgtd">Kira, Wakiso &middot; Uganda</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="surface"><div class="card back">
+      <div class="lockup">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+      </div>
+      <div class="tagline">Every input. Every mile. <b>Every store.</b></div>
+      <div class="subs">
+        <span class="s-agro">Agro</span>
+        <span class="s-mill">Milling</span>
+        <span class="s-log">Logistics</span>
+        <span class="s-cf">Clearing&nbsp;&amp;&nbsp;Fwd</span>
+        <span class="s-wh">Warehousing</span>
+        <span class="s-col">Collateral</span>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 4 — Group Human Resources -->
+  <div class="pair">
+    <div class="cap">Mary Nakato &mdash; front / back</div>
+    <div class="surface"><div class="card front navy-field">
+      <div class="watermark"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></div>
+      <div class="topbar">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="tag">Morise Holdings<br>Limited</span>
+      </div>
+      <div class="who">
+        <div class="name">Mary Nakato</div>
+        <div class="role">Director &mdash; Group Human Resources</div>
+        <div class="contact">
+          <span>+256 (0)0 000 0000</span>
+          <span>m.nakato@morise-holdings.com</span>
+          <span>morise-holdings.com</span>
+        </div>
+        <div class="foot">
+          <span>Morise Holdings Limited</span>
+          <span class="rgtd">Kira, Wakiso &middot; Uganda</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="surface"><div class="card back">
+      <div class="lockup">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+      </div>
+      <div class="tagline">Every input. Every mile. <b>Every store.</b></div>
+      <div class="subs">
+        <span class="s-agro">Agro</span>
+        <span class="s-mill">Milling</span>
+        <span class="s-log">Logistics</span>
+        <span class="s-cf">Clearing&nbsp;&amp;&nbsp;Fwd</span>
+        <span class="s-wh">Warehousing</span>
+        <span class="s-col">Collateral</span>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 5 — Non-Executive Director & Group Auditor -->
+  <div class="pair">
+    <div class="cap">Susan Nassuna &mdash; front / back</div>
+    <div class="surface"><div class="card front navy-field">
+      <div class="watermark"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></div>
+      <div class="topbar">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="tag">Morise Holdings<br>Limited</span>
+      </div>
+      <div class="who">
+        <div class="name">Susan Nassuna</div>
+        <div class="role">Non&#8209;Executive Director &amp; Group Auditor</div>
+        <div class="contact">
+          <span>+256 (0)0 000 0000</span>
+          <span>s.nassuna@morise-holdings.com</span>
+          <span>morise-holdings.com</span>
+        </div>
+        <div class="foot">
+          <span>Morise Holdings Limited</span>
+          <span class="rgtd">Kira, Wakiso &middot; Uganda</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="surface"><div class="card back">
+      <div class="lockup">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+      </div>
+      <div class="tagline">Every input. Every mile. <b>Every store.</b></div>
+      <div class="subs">
+        <span class="s-agro">Agro</span>
+        <span class="s-mill">Milling</span>
+        <span class="s-log">Logistics</span>
+        <span class="s-cf">Clearing&nbsp;&amp;&nbsp;Fwd</span>
+        <span class="s-wh">Warehousing</span>
+        <span class="s-col">Collateral</span>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 6 — Blank template -->
+  <div class="pair">
+    <div class="cap">Blank template &mdash; front / back</div>
+    <div class="surface"><div class="card front navy-field">
+      <div class="watermark"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></div>
+      <div class="topbar">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="tag">Morise Holdings<br>Limited</span>
+      </div>
+      <div class="who">
+        <div class="name">Full Name</div>
+        <div class="role">Director &mdash; Portfolio</div>
+        <div class="contact">
+          <span>+256 (0)0 000 0000</span>
+          <span>f.name@morise-holdings.com</span>
+          <span>morise-holdings.com</span>
+        </div>
+        <div class="foot">
+          <span>Morise Holdings Limited</span>
+          <span class="rgtd">Kira, Wakiso &middot; Uganda</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="surface"><div class="card back">
+      <div class="lockup">
+        <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+        <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+      </div>
+      <div class="tagline">Every input. Every mile. <b>Every store.</b></div>
+      <div class="subs">
+        <span class="s-agro">Agro</span>
+        <span class="s-mill">Milling</span>
+        <span class="s-log">Logistics</span>
+        <span class="s-cf">Clearing&nbsp;&amp;&nbsp;Fwd</span>
+        <span class="s-wh">Warehousing</span>
+        <span class="s-col">Collateral</span>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+</body>
+</html>

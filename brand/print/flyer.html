@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morise Holdings — Group Capability Flyer</title>
+<link rel="stylesheet" href="_brand.css">
+<!-- A4 portrait, single page, full-bleed. Replace the group phone line before printing. -->
+<style>
+  @page{ size:A4; margin:0; }
+
+  .flyer{ width:210mm; height:297mm; display:flex; flex-direction:column; }
+
+  /* ---------- hero ---------- */
+  .hero{ padding:14mm 16mm 0; height:92mm; display:flex; flex-direction:column; }
+  .hero .watermark .mk{ width:150mm; height:150mm; right:-46mm; top:-40mm; opacity:.05; }
+  .hero .lockup .tile{ width:13mm; height:13mm; border-radius:22%; }
+  .hero .lockup .wm b{ font-size:15pt; }
+  .hero .lockup .wm i{ font-size:5.6pt; }
+  .hero h1{
+    margin-top:auto; font-size:28pt; font-weight:800; line-height:1.07;
+    letter-spacing:-.4px; max-width:170mm;
+  }
+  .hero h1 em{ color:var(--amber-soft); font-style:normal; }
+  .hero p.lead{
+    margin-top:5mm; margin-bottom:7mm; font-size:10pt; font-weight:400; line-height:1.55;
+    color:#D7E0EA; max-width:150mm;
+  }
+  .routeline{ margin-top:auto; }
+
+  /* ---------- body ---------- */
+  .body{ padding:10mm 16mm 5mm; flex:1; display:flex; flex-direction:column; }
+  .sec-h{ display:flex; align-items:center; gap:5mm; margin-bottom:6mm; }
+  .sec-h h2{ font-size:12.5pt; font-weight:800; color:var(--navy); letter-spacing:.2px; }
+  .sec-h .kicker{ color:var(--amber); }
+  .sec-h::after{ content:""; height:1px; background:var(--hair); flex:1; }
+
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:5mm 6mm; }
+  .co{
+    border:1px solid var(--hair); border-left:3px solid var(--accent,#94a3b8);
+    border-radius:2mm; padding:3.8mm 4.6mm 3.6mm;
+    display:flex; flex-direction:column; min-height:31mm;
+  }
+  .co h3{ font-size:10.5pt; font-weight:800; color:var(--navy); letter-spacing:.1px; }
+  .co .sector{
+    margin-top:1.1mm; font-size:6.6pt; font-weight:700; letter-spacing:1.6px;
+    text-transform:uppercase; color:var(--accent,#64748b);
+  }
+  .co p{ margin-top:2.2mm; font-size:7.9pt; line-height:1.48; color:#4A5A6B; }
+  .co .city{
+    margin-top:auto; padding-top:2.4mm; font-size:7pt; font-weight:600;
+    color:var(--slate); display:flex; align-items:center; gap:1.6mm;
+  }
+  .co .city::before{ content:""; width:1.8mm; height:1.8mm; border-radius:50%; background:var(--accent,#94a3b8); flex:none; }
+
+  .c-agro{ --accent:var(--agro); } .c-mill{ --accent:var(--milling); }
+  .c-log{ --accent:var(--logistics); } .c-cf{ --accent:var(--clearing); }
+  .c-wh{ --accent:var(--warehouse); } .c-col{ --accent:var(--collateral); }
+
+  .why{ margin-top:auto; padding-top:6mm; display:grid; grid-template-columns:repeat(4,1fr); gap:5mm; }
+  .why h4{
+    font-size:8.4pt; font-weight:800; color:var(--navy); margin-bottom:1.6mm;
+    padding-top:2.4mm; border-top:2px solid var(--amber);
+  }
+  .why p{ font-size:7.1pt; line-height:1.48; color:#5A6675; }
+
+  /* ---------- foot ---------- */
+  .foot{
+    height:34mm; padding:0 16mm; display:flex; align-items:center; justify-content:space-between; gap:10mm;
+  }
+  .foot .lockup .tile{ width:12mm; height:12mm; border-radius:22%; }
+  .foot .lockup .wm b{ font-size:12.5pt; }
+  .foot .lockup .wm i{ font-size:4.7pt; }
+  .foot .cta{ text-align:right; }
+  .foot .cta .big{
+    font-size:10.5pt; font-weight:800; color:#fff; letter-spacing:.2px;
+  }
+  .foot .cta .big b{ color:var(--amber-soft); }
+  .foot .cta .lines{
+    margin-top:2.4mm; font-size:7.4pt; font-weight:500; color:#C9D4E0; line-height:1.6;
+  }
+  .foot .cta .lines .rgtd{ color:#93A3B7; }
+</style>
+</head>
+<body>
+
+<div class="screen-note">
+  <h1>Group capability flyer &mdash; A4</h1>
+  <p>One page, full-bleed, <code>210 &times; 297 mm</code>. Prints as a single sheet. Swap the
+  <code>+256 (0)0 000 0000</code> group line for the real switchboard number.</p>
+</div>
+
+<div class="surface"><div class="flyer">
+
+  <div class="hero navy-field">
+    <div class="watermark"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></div>
+    <div class="lockup on-navy">
+      <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+      <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+    </div>
+    <h1>One group. Six companies.<br>The length of the <em>supply chain.</em></h1>
+    <p class="lead">Morise Holdings Limited is a Ugandan group that moves inputs, grain, fuel and
+      finished goods from source to shelf &mdash; agricultural supply, grain milling, road freight,
+      customs clearing &amp; forwarding, warehousing and collateral management, run on one shared
+      operating platform.</p>
+    <svg class="routeline" viewBox="0 0 600 26" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ln" d="M8 13 H592"/>
+      <circle class="nd" cx="8" cy="13" r="3"/>
+      <circle class="nd" cx="150" cy="13" r="3"/>
+      <circle class="nd key" cx="300" cy="13" r="4.4"/>
+      <circle class="nd" cx="450" cy="13" r="3"/>
+      <circle class="nd" cx="592" cy="13" r="3"/>
+    </svg>
+  </div>
+
+  <div class="body">
+    <div class="sec-h"><span class="kicker">The portfolio</span><h2>Six wholly-owned operating companies</h2></div>
+
+    <div class="grid">
+      <div class="co c-agro">
+        <h3>Morise Agro Ltd</h3>
+        <div class="sector">Agricultural inputs &amp; fuel</div>
+        <p>Seed, fertiliser, agro-chemicals and fuel supplied to farms and agri-businesses across Uganda.</p>
+        <div class="city">Kira, Wakiso</div>
+      </div>
+      <div class="co c-mill">
+        <h3>Morise Milling Ltd</h3>
+        <div class="sector">Grain milling</div>
+        <p>Weighbridge grain intake, milling of maize, wheat, sorghum and millet, and distribution of flour and by-products from five regional mills.</p>
+        <div class="city">Kampala &mdash; Industrial Area</div>
+      </div>
+      <div class="co c-log">
+        <h3>Morise Logistics Ltd</h3>
+        <div class="sector">Road freight &amp; delivery</div>
+        <p>Scheduled road freight, distribution and last-mile delivery for group companies and third-party clients.</p>
+        <div class="city">Jinja</div>
+      </div>
+      <div class="co c-cf">
+        <h3>Morise Clearing &amp; Forwarding Ltd</h3>
+        <div class="sector">Customs &amp; freight forwarding</div>
+        <p>Customs clearance, air / ocean / road forwarding and bonded warehousing at Uganda&rsquo;s main border posts and Entebbe.</p>
+        <div class="city">Kampala</div>
+      </div>
+      <div class="co c-wh">
+        <h3>Morise Warehouse Management Ltd</h3>
+        <div class="sector">Storage &amp; handling</div>
+        <p>Multi-branch ambient and cold storage, cross-docking and inventory handling across five regional warehouses.</p>
+        <div class="city">Kampala &mdash; Industrial Area</div>
+      </div>
+      <div class="co c-col">
+        <h3>Morise Collateral Management Ltd</h3>
+        <div class="sector">Collateral management</div>
+        <p>Field inspection, physical stock verification and chain-of-custody monitoring of goods pledged as collateral, for banks and financiers.</p>
+        <div class="city">Kampala &mdash; Nakasero</div>
+      </div>
+    </div>
+
+    <div class="why">
+      <div><h4>One group, end to end</h4><p>Inputs, milling, haulage, forwarding, storage and collateral cover under a single owner &mdash; fewer hand-offs, one point of accountability.</p></div>
+      <div><h4>One digital backbone</h4><p>Every company runs on the shared Morise platform: orders, inventory, finance, HR and delivery tracking in one system.</p></div>
+      <div><h4>Nationwide footprint</h4><p>Offices, mills, warehouses and border posts across Kampala, Jinja, Mbale, Masindi, Lira, Gulu and Entebbe.</p></div>
+      <div><h4>Governance built in</h4><p>Consolidated accounts, inter-company reporting, delegated administration and a full audit trail across the group.</p></div>
+    </div>
+  </div>
+
+  <div class="foot navy-field">
+    <div class="lockup on-navy">
+      <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+      <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+    </div>
+    <div class="cta">
+      <div class="big">Ask for the group <b>capability pack</b></div>
+      <div class="lines">
+        hello@morise-holdings.com &nbsp;&middot;&nbsp; +256 (0)0 000 0000 &nbsp;&middot;&nbsp; morise-holdings.com<br>
+        <span class="rgtd">Registered office &mdash; Kira, Mulawa, Wakiso District, Uganda</span>
+      </div>
+    </div>
+  </div>
+
+</div></div>
+</body>
+</html>

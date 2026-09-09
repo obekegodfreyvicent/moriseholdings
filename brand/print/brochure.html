@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morise Holdings — Group Profile Brochure</title>
+<link rel="stylesheet" href="_brand.css">
+<!--
+  A4 landscape tri-fold (letter / C-fold). Two sheets:
+    Sheet 1 = OUTSIDE  -> print on the front of the paper
+    Sheet 2 = INSIDE   -> print on the back  (flip on the SHORT edge)
+  Panel order on OUTSIDE, left->right:  Inner flap | Back cover | Front cover
+  Panel order on INSIDE,  left->right:  Who we are | Companies 1-3 | Companies 4-6
+  Fold: left third folds in first, then the right third (front cover) folds over.
+  Replace the +256 (0)0 000 0000 group line before printing.
+-->
+<style>
+  @page{ size:A4 landscape; margin:0; }
+
+  .sheet{
+    width:297mm; height:210mm; display:flex; overflow:hidden;
+    page-break-after:always;
+  }
+  .sheet.inside{ page-break-after:auto; }
+  .panel{
+    width:99mm; height:210mm; padding:12mm 11mm; position:relative;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  /* screen-only fold guides */
+  .sheet{ position:relative; }
+  .sheet::before,.sheet::after{
+    content:""; position:absolute; top:0; bottom:0; width:0;
+    border-left:1px dashed rgba(120,130,145,.55); z-index:5;
+  }
+  .sheet::before{ left:99mm; } .sheet::after{ left:198mm; }
+  @media print{ .sheet::before,.sheet::after{ display:none; } }
+
+  h2.head{ font-size:15pt; font-weight:800; color:var(--navy); line-height:1.1; letter-spacing:-.2px; }
+  .kick{ font-size:9px; font-weight:700; letter-spacing:2.6px; text-transform:uppercase; color:var(--amber); margin-bottom:4mm; }
+
+  /* ---------- FRONT COVER ---------- */
+  .cover{ padding:14mm 12mm; }
+  .cover .watermark .mk{ width:120mm; height:120mm; right:-40mm; bottom:-30mm; opacity:.06; }
+  .cover .lockup{ margin-bottom:auto; }
+  .cover .lockup .tile{ width:14mm; height:14mm; border-radius:22%; }
+  .cover .lockup .wm b{ font-size:16pt; }
+  .cover .lockup .wm i{ font-size:5.8pt; }
+  .cover .title{
+    font-size:26pt; font-weight:800; line-height:1.08; letter-spacing:-.3px; color:#fff;
+  }
+  .cover .title em{ font-style:normal; color:var(--amber-soft); }
+  .cover .sub{
+    margin-top:5mm; font-size:9pt; line-height:1.55; color:#D3DDE8; max-width:66mm;
+  }
+  .cover .routeline{ margin-top:8mm; }
+  .cover .foot{
+    margin-top:8mm; font-size:7pt; font-weight:700; letter-spacing:2.4px;
+    text-transform:uppercase; color:#9DB0C4;
+  }
+
+  /* ---------- BACK COVER ---------- */
+  .back .lockup{ margin-bottom:8mm; }
+  .back .lockup .tile{ width:11mm; height:11mm; border-radius:22%; }
+  .back .lockup .wm b{ font-size:12pt; color:var(--navy); }
+  .back .lockup .wm i{ font-size:4.4pt; }
+  .back .blurb{ font-size:8pt; line-height:1.55; color:#4A5A6B; margin-bottom:7mm; }
+  .back .subs{ display:flex; flex-direction:column; gap:2.2mm; margin-bottom:auto; }
+  .back .subs span{
+    font-size:7.6pt; font-weight:700; color:var(--navy); letter-spacing:.2px;
+    display:flex; align-items:center; gap:2.4mm;
+  }
+  .back .subs span::before{ content:""; width:2mm; height:2mm; border-radius:50%; background:var(--d,#94a3b8); flex:none; }
+  .back .contact{
+    border-top:2px solid var(--amber); padding-top:4mm; font-size:7.6pt; line-height:1.7; color:#3C4A5A;
+  }
+  .back .contact b{ color:var(--navy); }
+  .back .contact .rgtd{ color:var(--slate); }
+
+  /* ---------- INNER FLAP (at a glance) ---------- */
+  .flap{ background:#F4F6F9; }
+  .flap .lockup{ margin-bottom:9mm; }
+  .flap .lockup .tile{ width:10mm; height:10mm; border-radius:22%; }
+  .flap .lockup .wm b{ font-size:11pt; color:var(--navy); }
+  .flap .lockup .wm i{ font-size:4.1pt; }
+  .flap .stat{ margin-bottom:6mm; }
+  .flap .stat b{ display:block; font-size:20pt; font-weight:800; color:var(--navy); line-height:1; }
+  .flap .stat span{ font-size:7.4pt; font-weight:600; color:var(--slate); letter-spacing:.3px; }
+  .flap ul{ list-style:none; margin-top:auto; display:flex; flex-direction:column; gap:2.6mm; }
+  .flap li{
+    font-size:7.6pt; line-height:1.45; color:#42505F; padding-left:5mm; position:relative;
+  }
+  .flap li::before{ content:""; position:absolute; left:0; top:2.6mm; width:2.6mm; height:2px; background:var(--amber); }
+
+  /* ---------- INSIDE: who we are ---------- */
+  .who h2.head{ margin-bottom:5mm; }
+  .who h2.head em{ font-style:normal; color:var(--amber); }
+  .who p{ font-size:8.4pt; line-height:1.6; color:#465563; margin-bottom:4mm; }
+  .who .mini{ margin-top:auto; }
+  .who .mini h4{
+    font-size:7.6pt; font-weight:800; color:var(--navy); letter-spacing:1.4px;
+    text-transform:uppercase; padding-top:3mm; border-top:1px solid var(--hair); margin-bottom:3mm;
+  }
+  .who .mini ul{ list-style:none; display:flex; flex-direction:column; gap:2mm; }
+  .who .mini li{ font-size:7.8pt; color:#42505F; padding-left:4.6mm; position:relative; }
+  .who .mini li::before{ content:""; position:absolute; left:0; top:2.4mm; width:2.4mm; height:2px; background:var(--amber); }
+
+  /* ---------- INSIDE: company lists ---------- */
+  .cos .kick{ margin-bottom:5mm; }
+  .entry{ padding:4mm 0; border-top:1px solid var(--hair); }
+  .entry:first-of-type{ border-top:0; padding-top:0; }
+  .entry h3{
+    font-size:9.4pt; font-weight:800; color:var(--navy); display:flex; align-items:center; gap:2.4mm;
+  }
+  .entry h3::before{ content:""; width:2.4mm; height:2.4mm; border-radius:50%; background:var(--d,#94a3b8); flex:none; }
+  .entry .sector{
+    margin:1mm 0 2mm 4.8mm; font-size:6.3pt; font-weight:700; letter-spacing:1.4px;
+    text-transform:uppercase; color:var(--d,#64748b);
+  }
+  .entry p{ margin-left:4.8mm; font-size:7.6pt; line-height:1.5; color:#4A5A6B; }
+  .d-agro{ --d:var(--agro); } .d-mill{ --d:var(--milling); }
+  .d-log{ --d:var(--logistics); } .d-cf{ --d:var(--clearing); }
+  .d-wh{ --d:var(--warehouse); } .d-col{ --d:var(--collateral); }
+  .cos .closing{
+    margin-top:auto; padding-top:4mm; border-top:2px solid var(--amber);
+    font-size:7.6pt; line-height:1.55; color:#3C4A5A;
+  }
+  .cos .closing b{ color:var(--navy); }
+</style>
+</head>
+<body>
+
+<div class="screen-note">
+  <h1>Group profile brochure &mdash; A4 tri-fold</h1>
+  <p>Two sheets, <code>297 &times; 210 mm</code> each. Print <b>OUTSIDE</b> on the front of the
+  paper and <b>INSIDE</b> on the back, flipping on the <b>short edge</b>. Dashed lines on screen
+  are the fold positions (99&nbsp;mm and 198&nbsp;mm) &mdash; they do not print. Letter fold:
+  the left panel folds in first, then the front-cover panel folds over it.</p>
+</div>
+
+<div class="sheet-label">Sheet 1 &mdash; outside &nbsp;(inner flap &middot; back cover &middot; front cover)</div>
+<div class="surface"><div class="sheet outside">
+
+  <!-- OUTSIDE · left — INNER FLAP -->
+  <div class="panel flap">
+    <div class="lockup">
+      <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+      <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+    </div>
+    <div class="kick">At a glance</div>
+    <div class="stat"><b>6</b><span>wholly-owned operating companies</span></div>
+    <div class="stat"><b>1</b><span>shared operating platform, group-wide</span></div>
+    <div class="stat"><b>7+</b><span>towns &mdash; Kampala, Jinja, Mbale, Masindi, Lira, Gulu, Entebbe</span></div>
+    <ul>
+      <li>Agricultural inputs &amp; fuel distribution</li>
+      <li>Grain milling and flour distribution</li>
+      <li>Road freight and last-mile delivery</li>
+      <li>Customs clearing &amp; freight forwarding</li>
+      <li>Warehousing, cold storage &amp; handling</li>
+      <li>Collateral management for financiers</li>
+    </ul>
+  </div>
+
+  <!-- OUTSIDE · center — BACK COVER -->
+  <div class="panel back">
+    <div class="lockup">
+      <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+      <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+    </div>
+    <p class="blurb">A Ugandan group across the length of the supply chain &mdash; from the input
+      and the grain to the mill, the truck, the border and the store.</p>
+    <div class="subs">
+      <span class="d-agro" style="--d:var(--agro)">Morise Agro Ltd</span>
+      <span class="d-mill" style="--d:var(--milling)">Morise Milling Ltd</span>
+      <span class="d-log" style="--d:var(--logistics)">Morise Logistics Ltd</span>
+      <span class="d-cf" style="--d:var(--clearing)">Morise Clearing &amp; Forwarding Ltd</span>
+      <span class="d-wh" style="--d:var(--warehouse)">Morise Warehouse Management Ltd</span>
+      <span class="d-col" style="--d:var(--collateral)">Morise Collateral Management Ltd</span>
+    </div>
+    <div class="contact">
+      <b>Morise Holdings Limited</b><br>
+      hello@morise-holdings.com<br>
+      +256 (0)0 000 0000<br>
+      morise-holdings.com<br>
+      <span class="rgtd">Registered office &mdash; Kira, Mulawa,<br>Wakiso District, Uganda</span>
+    </div>
+  </div>
+
+  <!-- OUTSIDE · right — FRONT COVER -->
+  <div class="panel cover navy-field">
+    <div class="watermark"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></div>
+    <div class="lockup on-navy">
+      <span class="tile"><svg class="mk" viewBox="0 0 128 128"><path class="stroke" d="M32 94 V40 L64 74 L96 40 V94"/><path class="dia" d="M64 20 L77 33 L64 46 L51 33 Z"/></svg></span>
+      <span class="wm"><b>MORISE</b><i>HOLDINGS&nbsp;LIMITED</i></span>
+    </div>
+    <div>
+      <div class="title">One group across the <em>whole supply chain.</em></div>
+      <div class="sub">Agricultural supply, grain milling, freight, forwarding, warehousing and
+        collateral management &mdash; run as one.</div>
+      <svg class="routeline" viewBox="0 0 300 22" preserveAspectRatio="none" aria-hidden="true">
+        <path class="ln" d="M6 11 H294"/>
+        <circle class="nd" cx="6" cy="11" r="3"/><circle class="nd" cx="105" cy="11" r="3"/>
+        <circle class="nd key" cx="150" cy="11" r="4.2"/>
+        <circle class="nd" cx="200" cy="11" r="3"/><circle class="nd" cx="294" cy="11" r="3"/>
+      </svg>
+    </div>
+    <div class="foot">Group profile &nbsp;&middot;&nbsp; 2026</div>
+  </div>
+
+</div></div>
+
+<div class="sheet-label">Sheet 2 &mdash; inside &nbsp;(who we are &middot; companies 1&ndash;3 &middot; companies 4&ndash;6)</div>
+<div class="surface"><div class="sheet inside">
+
+  <!-- INSIDE · left — WHO WE ARE -->
+  <div class="panel who">
+    <div class="kick">Who we are</div>
+    <h2 class="head">We move value from <em>source to shelf.</em></h2>
+    <p>Morise Holdings Limited is a Ugandan holding company with six wholly-owned operating
+      businesses. Between them they supply farm inputs and fuel, mill grain into flour, haul
+      freight, clear and forward cargo through the borders, store and handle goods, and monitor
+      stock pledged as collateral.</p>
+    <p>Each company is run by its own team, but on one shared platform &mdash; a single system for
+      orders, inventory, finance, people and delivery tracking. That means fewer hand-offs between
+      links in the chain, consolidated reporting for the group, and one point of accountability
+      for a customer who needs more than one service.</p>
+    <div class="mini">
+      <h4>What the group does</h4>
+      <ul>
+        <li>Input &amp; fuel supply to farms and agri-business</li>
+        <li>Grain intake, milling and flour distribution</li>
+        <li>Road freight, distribution and last-mile delivery</li>
+        <li>Customs clearance and freight forwarding</li>
+        <li>Ambient &amp; cold storage, cross-docking, handling</li>
+        <li>Collateral inspection and chain-of-custody monitoring</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- INSIDE · center — COMPANIES 1-3 -->
+  <div class="panel cos">
+    <div class="kick">Our companies</div>
+    <div class="entry d-agro">
+      <h3>Morise Agro Ltd</h3>
+      <div class="sector">Agricultural inputs &amp; fuel</div>
+      <p>Seed, fertiliser, agro-chemicals and fuel supplied to farms and agri-businesses across
+        Uganda, from the Kira distribution base.</p>
+    </div>
+    <div class="entry d-mill">
+      <h3>Morise Milling Ltd</h3>
+      <div class="sector">Grain milling</div>
+      <p>Weighbridge grain intake and milling of maize, wheat, sorghum and millet, with packaging
+        and distribution of flour and by-products from five regional mills.</p>
+    </div>
+    <div class="entry d-log">
+      <h3>Morise Logistics Ltd</h3>
+      <div class="sector">Road freight &amp; delivery</div>
+      <p>Scheduled road freight, distribution and last-mile delivery for group companies and
+        third-party clients, based in Jinja.</p>
+    </div>
+  </div>
+
+  <!-- INSIDE · right — COMPANIES 4-6 -->
+  <div class="panel cos">
+    <div class="kick">&nbsp;</div>
+    <div class="entry d-cf">
+      <h3>Morise Clearing &amp; Forwarding Ltd</h3>
+      <div class="sector">Customs &amp; freight forwarding</div>
+      <p>Customs clearance and air / ocean / road forwarding with bonded warehousing at Uganda&rsquo;s
+        main border posts and Entebbe.</p>
+    </div>
+    <div class="entry d-wh">
+      <h3>Morise Warehouse Management Ltd</h3>
+      <div class="sector">Storage &amp; handling</div>
+      <p>Multi-branch ambient and cold storage, cross-docking and inventory handling across five
+        regional warehouses.</p>
+    </div>
+    <div class="entry d-col">
+      <h3>Morise Collateral Management Ltd</h3>
+      <div class="sector">Collateral management</div>
+      <p>Field inspection, physical stock verification and chain-of-custody monitoring of goods
+        pledged as collateral, for banks and financiers.</p>
+    </div>
+    <div class="closing"><b>One platform.</b> Every company above runs on the same Morise system,
+      so the group sees one consolidated picture &mdash; and a client deals with one Morise.</div>
+  </div>
+
+</div></div>
+
+</body>
+</html>
