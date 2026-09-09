@@ -1,0 +1,11 @@
+[Heading 1] 100. Implementation Status Update 102 (9 September 2026) — Storefront Language Set Scoped to 9 Official Languages
+
+[Body Text] An administrator asked for the Customer Storefront to be localised and globalised into a specific, named set of languages, grouped exactly as given: Uganda — Official/Global (English), Uganda — Official/Africa (Kiswahili), Uganda — Bantu (Luganda), Africa (Arabic), Europe (German, French, Spanish, Italian), and The Americas (Portuguese).
+
+[Body Text] These 9 languages were already shipped fully translated across Updates 29–31 (framework, full key catalogue, database content localisation), inside a much larger 43-language aspirational list added in Update 30 — 34 English-fallback placeholder languages plus two partially-translated regional languages (Runyankole, Acholi). mbms/storefront/src/locales/index.js's LANGUAGE_LIST and LOCALES are now scoped to exactly these 9 official languages, retiring the placeholder and partial entries; every remaining language ships a complete translation, so the picker's “English for now” caveat no longer applies to any option, and TRANSLATED_LANGS now equals FULLY_TRANSLATED_LANGS. The picker's region groups match the administrator's naming exactly.
+
+[Body Text] Database content localisation (glossary + TranslationProvider seam, Update 32), currency/figure localisation (lib/format.js's CURRENCY_BY_LANG / LOCALE_TAG, Update 33) and digit transliteration already covered exactly this 9-language set and needed no change. No backend, schema, endpoint or permission change — a front-end scope change to an existing feature. Verified end to end: vite build clean (74 modules); the language picker shows exactly 9 options across the administrator's 6 named region groups, all rendering the full storefront (not an English fallback).
+
+[Heading 2] Impact on this document
+
+[Body Text] Scope note — the Customer Storefront's language offering (Updates 29–31) is now the administrator's exact 9-language set, grouped Uganda — Official/Global, Uganda — Official/Africa, Uganda — Bantu, Africa, Europe, The Americas — not an open-ended aspirational list.
