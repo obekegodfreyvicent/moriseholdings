@@ -1,0 +1,51 @@
+# Render Blueprint — public hosting for the MBMS backend, so the
+# Netlify-hosted Admin app and Customer Storefront can reach a real API
+# (9 September 2026, Update 105). Redis is deliberately NOT provisioned
+# here: it is defined in mbms/docker-compose.yml but nothing in
+# mbms/backend/src actually uses it (grep confirms no ioredis/REDIS_* code
+# path), so it is not needed for this deployment.
+#
+# To deploy: go to https://dashboard.render.com -> New -> Blueprint ->
+# connect the obekegodfreyvicent/moriseholdings GitHub repo -> Render finds
+# this file and shows the two resources below -> Apply. The database URL
+# and both JWT secrets are wired/generated automatically; no manual env
+# var entry is required.
+
+databases:
+  - name: morise-db
+    databaseName: mbms_identity_org
+    user: mbms
+    plan: free
+    region: oregon
+
+services:
+  - type: web
+    name: morise-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: mbms/backend
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm run start:prod
+    healthCheckPath: /api/v1/docs-json
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: morise-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 900s
+      - key: JWT_REFRESH_EXPIRES_IN_DAYS
+        value: "7"
+      - key: JWT_CUSTOMER_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_CUSTOMER_ACCESS_EXPIRES_IN
+        value: 900s
+      - key: JWT_CUSTOMER_REFRESH_EXPIRES_IN_DAYS
+        value: "7"
+      - key: PASSWORD_MIN_LENGTH
+        value: "8"
+      - key: NODE_ENV
+        value: production
