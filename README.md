@@ -3665,6 +3665,47 @@ later").
 
 ---
 
+## Promo banner wordings now change with the storefront language (9 September 2026)
+
+An administrator asked that banner wordings on the Customer Storefront also
+change for the customer's chosen language, across all 9 official languages
+(Update 102).
+
+- Banners are admin-authored database content (`PromoBanner` rows), not UI
+  catalogue strings — they translate through the backend content-glossary
+  seam (`ContentTranslationService.toLocale`, added Update 39), an
+  exact-phrase dictionary in `mbms/backend/src/common/translation/
+  content-glossary.ts`, separate from the storefront's own 528-key `t()`
+  catalogue (Updates 102/103).
+- Only **1 of the 3** seeded promo banners (Morise Agro Ltd's home-page
+  rail: "Season stock-up…") had its heading/body/link label in the
+  glossary; the other two ("One storefront for the whole group" /
+  "Explore the group" and "Bulk fuel and haulage, booked online" / "Book a
+  delivery") were never added when the banner content itself was written
+  (Update 39) — a `toLocale()` exact-match miss falls through to a
+  **word-token** partial translation (e.g. "Bulk" → "En vrac" in French)
+  rather than the full phrase, and for a banner with no matching tokens at
+  all ("One storefront…"), stayed in raw English in every language.
+- All 6 missing glossary entries (2 banners × heading/body/link label) are
+  now added, in all 8 non-English languages, reusing established
+  vocabulary (`Fuel`/`Freight Services` already in the glossary from the
+  clearing/forwarding categories).
+- **Verified end to end against the running system** (rebuilt & restarted
+  the `backend` Docker container first — the glossary is backend-only
+  code, so the storefront needed no rebuild): logged in as the demo
+  customer, called `GET /customer-portal/promo-banners` with
+  `Accept-Language: en/sw/lg/fr/es/pt/de/it/ar` — all 3 banners' heading,
+  body and link label now render fully in the chosen language for all 9,
+  confirmed by inspecting each response directly (not just source code).
+- **No schema, endpoint, permission or storefront-code change** — one
+  backend content file. Recorded as `Implementation Status Update 105`
+  (docs 02–18); cross-ref addenda on docs 19–25; `Implementation Status
+  Note 82` in `Multi_Holdings_Limited_Software_Development_Procedures.docx`;
+  `morise.docx` as **Update 62**; `01_Project Proposal` applied directly
+  (lock re-confirmed stale). Pre-edit copies in `docx_backup94/`.
+
+---
+
 ## Running the system
 
 Full instructions are in **`mbms/README.md`**. In short:
@@ -3875,6 +3916,8 @@ status log):
 78. `… — Every Non-English Official Language Reaches 100% Key Parity` (Update 103; Update 60 in `morise.docx`) — an administrator clarified Update 102's scope: every word on the storefront, apart from proper nouns like "Morise Holdings", must change with the chosen language for all 9 official languages. Auditing `mbms/storefront/src/locales/en.js`'s **528-key** catalogue against each translated table found the same **66 keys** missing from **every one** of the 8 non-English languages — 87.5% coverage across the board, entirely from features added after the original translation passes and never backfilled (the group-storefront / subsidiary-directory keys, Update 48; the delivery-confirmation / Morise e-Stamp keys, Updates 94–96). All 66 keys are now translated into all 8 languages (fr/es/pt/de/it in `eu.js`; sw/lg/ar in `regional.js` — 528 new key/value pairs), reusing each language's already-established terminology (e.g. French *succursale*/German *Filiale* for "branch" vs. French *filiale*/German *Tochtergesellschaft* for "subsidiary", matching the existing `corp.whollyOwned` wording). "Morise e-Stamp" and company/subsidiary proper nouns stay untranslated. **Every language now carries 528/528 keys — 100% parity.** A source scan for hard-coded JSX text bypassing `t()` (capitalised text nodes plus `placeholder`/`aria-label`/`title`/`alt` attributes across `src/pages` and `src/components`) found nothing outstanding beyond the "MORISE" wordmark and one example person-name placeholder — both proper nouns. **No backend, schema, endpoint or permission change** — locale data only. `vite build` clean (74 modules); the dockerized `storefront` container was rebuilt and redeployed, and the live built bundle was checked directly with `curl` to confirm the new strings actually ship (German *Tochtergesellschaften*, Swahili *Kampuni Tanzu*, Arabic *الشركات التابعة*, Italian *Segnala un problema*, etc.), not just exist in source. **04 SRS / 10 Test Plan / 14 User Manual / 18 UI-UX** carry the detail; the rest a short note. Cross-ref addenda on docs 19–25; `Implementation Status Note 80` in `Multi_Holdings_Limited_Software_Development_Procedures.docx`; `01_Project Proposal`'s `.~lock` file was re-checked (`pgrep`/`lsof`), confirmed stale again, and this entry was pasted in directly as section 115 — no sidecar needed. Pre-edit copies in `docx_backup92/`.
 
 79. `… — Admin App and Customer Storefront Connected to Netlify` (Update 104; Update 61 in `morise.docx`) — an administrator asked to connect the project to Netlify. Netlify hosts static sites / serverless functions only, so this connects the two static front-end apps — the stateful NestJS `backend` (+ Postgres/Redis) cannot run there and stays wherever it is already reachable; an explicit, agreed trade-off ("wire up Netlify now, backend later") means both deployed apps' `/api/v1/*` calls fail until the backend has a public URL. Two Netlify sites created via CLI (`obekegodfrey3@gmail.com` account): **`morise-storefront`** (<https://morise-storefront.netlify.app>) → `mbms/storefront`; **`morise-admin`** (<https://morise-admin.netlify.app>) → `mbms/frontend`. New `netlify.toml` in each app directory (`npm run build` → `dist`; a SPA catch-all redirect so `react-router-dom` routes survive a hard refresh — verified 200, not a Netlify 404; a commented-out `/api/*` proxy redirect ready to uncomment once a backend URL exists, positioned above the catch-all since Netlify evaluates redirects in file order). **No application code changed** — both apps already call the backend at relative `/api/v1/*` paths, the same paths each Dockerfile's `nginx.conf` already reverse-proxies locally. Each site built and given an **initial manual production deploy** (`netlify deploy --prod`), verified live with `curl` (root + a deep route, both 200 on each). **Continuous deployment from GitHub was deliberately not set up** — that requires installing the Netlify GitHub App, a one-time authorisation only the repo owner can grant by clicking through Netlify's UI (steps documented in `mbms/README.md`'s Netlify section: connect `obekegodfreyvicent/moriseholdings`, set Base directory to `mbms/storefront` / `mbms/frontend`). `.gitignore` gained a `.netlify` entry (auto-added by `netlify link`, keeps the machine-local linked-site-ID file out of git). **No backend, schema, endpoint or permission change.** Cross-ref addenda on docs 19–25; `Implementation Status Note 81` in `Multi_Holdings_Limited_Software_Development_Procedures.docx`; `01_Project Proposal` applied directly (lock re-confirmed stale). Pre-edit copies in `docx_backup93/`.
+
+80. `… — Promo Banner Wordings Now Change With the Storefront Language` (Update 105; Update 62 in `morise.docx`) — an administrator asked that banner wordings also change for the customer's chosen language, across all 9 official languages. Banners are admin-authored database content, translated through the backend content-glossary seam (`ContentTranslationService.toLocale`, Update 39) — an exact-phrase dictionary separate from the storefront's own 528-key `t()` catalogue (Updates 102/103). Only 1 of the 3 seeded promo banners (Morise Agro Ltd's "Season stock-up…") had its heading/body/link label in the glossary; the other two ("One storefront for the whole group" / "Explore the group" and "Bulk fuel and haulage, booked online" / "Book a delivery") were never added when that content was written — an exact-match miss falls through to a word-token partial translation, or stays raw English where no tokens match at all. All 6 missing glossary entries are now added in all 8 non-English languages, reusing established vocabulary. **Verified end to end against the running system**: rebuilt & restarted the `backend` Docker container, logged in as the demo customer, and called `GET /customer-portal/promo-banners` with each of the 9 `Accept-Language` values — all 3 banners now render fully translated headings/bodies/link labels for all 9, confirmed from the live API response, not just source. **No schema, endpoint, permission or storefront-code change** — one backend content file. Cross-ref addenda on docs 19–25; `Implementation Status Note 82` in `Multi_Holdings_Limited_Software_Development_Procedures.docx`; `01_Project Proposal` applied directly (lock re-confirmed stale). Pre-edit copies in `docx_backup94/`.
 
 Two independent "Sprint N" numbering schemes exist in this set — see
 `mbms/README.md` ("Sprint 10" section) and project memory before treating a

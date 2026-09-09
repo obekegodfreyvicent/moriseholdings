@@ -191,6 +191,54 @@ export const PHRASES: Record<string, Entry> = {
     it: 'Ordina ora sementi, fertilizzante e mezzi tecnici. Usa il codice WELCOME10 per il 10% di sconto sul primo ordine.',
     ar: 'اطلب بذورك وأسمدتك ومستلزماتك الآن. استخدم الرمز WELCOME10 للحصول على خصم 10% على طلبك الأول.',
   },
+  // Storefront home banners #2 and #3 (backfilled 9 Sep 2026, Update 106) —
+  // these two banners' heading/body/linkLabel were missing from the
+  // glossary since Update 39, so they silently stayed in English in every
+  // language while banner #1 (above) translated correctly.
+  'One storefront for the whole group': {
+    sw: 'Duka moja kwa kikundi kizima', lg: 'Eduuka emu ku kibiina kyonna',
+    fr: 'Une seule boutique pour tout le groupe', es: 'Una sola tienda para todo el grupo',
+    pt: 'Uma única loja para todo o grupo', de: 'Ein Shop für die ganze Gruppe',
+    it: 'Un solo negozio per tutto il gruppo', ar: 'متجر واحد للمجموعة بأكملها',
+  },
+  'Browse every Morise subsidiary and branch — inputs & fuel, logistics, clearing & forwarding, warehousing and collateral management — and settle it all on one account.': {
+    sw: 'Vinjari kila kampuni tanzu na tawi la Morise — pembejeo na mafuta, usafirishaji, uvushaji forodha na usafirishaji, uhifadhi na usimamizi wa dhamana — na lipa yote kwenye akaunti moja.',
+    lg: 'Laba buli kkampuni ya Morise ey’oku wansi n’ettabi lyayo — ebikozesebwa n’amafuta, entambula, okuyisa ku kaditomu n’okusindika, okutereka n’okuddukanya obwewolezebwa — era osasule byonna ku akaunti emu.',
+    fr: 'Parcourez toutes les filiales et succursales Morise — intrants et carburant, logistique, dédouanement et transit, entreposage et gestion des garanties — et réglez tout sur un seul compte.',
+    es: 'Explore todas las filiales y sucursales de Morise — insumos y combustible, logística, despacho de aduanas y tránsito, almacenamiento y gestión de garantías — y liquide todo en una sola cuenta.',
+    pt: 'Explore todas as subsidiárias e filiais da Morise — insumos e combustível, logística, desembaraço alfandegário e trânsito, armazenagem e gestão de garantias — e liquide tudo numa única conta.',
+    de: 'Durchstöbern Sie jede Morise-Tochtergesellschaft und -Filiale — Betriebsmittel & Kraftstoff, Logistik, Zollabfertigung & Spedition, Lagerhaltung und Sicherheitenverwaltung — und begleichen Sie alles über ein einziges Konto.',
+    it: 'Sfoglia ogni controllata e filiale Morise — mezzi tecnici e carburante, logistica, sdoganamento e spedizioni, stoccaggio e gestione delle garanzie — e salda tutto su un unico conto.',
+    ar: 'تصفّح كل شركة تابعة وفرع تابع لـ Morise — المدخلات والوقود، الخدمات اللوجستية، التخليص الجمركي والشحن العابر، التخزين وإدارة الضمانات — وسدّد كل ذلك عبر حساب واحد.',
+  },
+  'Explore the group': {
+    sw: 'Chunguza Kikundi', lg: 'Ketta ku Kibiina', fr: 'Découvrir le groupe', es: 'Explorar el grupo',
+    pt: 'Explorar o grupo', de: 'Gruppe entdecken', it: 'Esplora il gruppo', ar: 'استكشف المجموعة',
+  },
+  'Bulk fuel and haulage, booked online': {
+    sw: 'Mafuta kwa Jumla na Usafirishaji, Yanabidiwa Mtandaoni',
+    lg: 'Amafuta mu Bungi n’Okusitula, Bibikkibwa ku Yintaneeti',
+    fr: 'Carburant en gros et transport routier, réservés en ligne',
+    es: 'Combustible a granel y transporte, reservados en línea',
+    pt: 'Combustível a granel e transporte, reservados online',
+    de: 'Kraftstoff im Großhandel und Transport, online gebucht',
+    it: 'Carburante all’ingrosso e trasporto, prenotati online',
+    ar: 'وقود بالجملة ونقل، بالحجز عبر الإنترنت',
+  },
+  'Schedule fuel deliveries and freight with Morise Logistics without leaving the portal. Track every consignment to the door.': {
+    sw: 'Panga uwasilishaji wa mafuta na mizigo na Morise Logistics bila kuondoka kwenye lango. Fuatilia kila shehena hadi mlangoni.',
+    lg: 'Teekateeka okutuusa amafuta n’emigugu ne Morise Logistics nga tovudde mu poteo. Goberera buli mugugu okutuuka ku luggi.',
+    fr: 'Planifiez vos livraisons de carburant et votre fret avec Morise Logistics sans quitter le portail. Suivez chaque envoi jusqu’à votre porte.',
+    es: 'Programe entregas de combustible y transporte de carga con Morise Logistics sin salir del portal. Rastree cada envío hasta la puerta.',
+    pt: 'Agende entregas de combustível e frete com a Morise Logistics sem sair do portal. Acompanhe cada remessa até à porta.',
+    de: 'Planen Sie Kraftstofflieferungen und Frachttransporte mit Morise Logistics, ohne das Portal zu verlassen. Verfolgen Sie jede Sendung bis vor die Tür.',
+    it: 'Pianifica consegne di carburante e trasporto merci con Morise Logistics senza uscire dal portale. Monitora ogni spedizione fino alla porta.',
+    ar: 'جدول عمليات توصيل الوقود والشحن مع Morise Logistics دون مغادرة البوابة. تتبّع كل شحنة حتى الباب.',
+  },
+  'Book a delivery': {
+    sw: 'Panga Uwasilishaji', lg: 'Bikka Okutuusa', fr: 'Réserver une livraison', es: 'Reservar una entrega',
+    pt: 'Reservar uma entrega', de: 'Lieferung buchen', it: 'Prenota una consegna', ar: 'احجز عملية توصيل',
+  },
   'Morise Holdings Limited is a Ugandan group supplying agricultural inputs, fuel, logistics and warehousing to businesses across the region. This storefront lets our account customers browse the catalogue, place orders, track deliveries and settle invoices online.': {
     sw: 'Morise Holdings Limited ni kampuni ya Uganda inayotoa pembejeo za kilimo, mafuta, usafirishaji na uhifadhi ghalani kwa biashara kote katika eneo hili. Duka hili la mtandaoni linawaruhusu wateja wetu wa akaunti kuvinjari katalogi, kuweka oda, kufuatilia uwasilishaji na kulipa ankara mtandaoni.',
     lg: 'Morise Holdings Limited kampuni ya Uganda egaba ebikozesebwa mu bulimi, amafuta, entambula n’okutereka mu masitoowa eri bizinensi mu kitundu kyonna. Eddwaliro lino ery’oku yintaneeti liwa bakasitoma baffe abalina akaawunti okulaba kataloogu, okuteeka odda, okugoberera okutuusa n’okusasula inuvoyisi ku yintaneeti.',
