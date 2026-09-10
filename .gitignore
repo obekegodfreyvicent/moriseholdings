@@ -7,10 +7,15 @@ build/
 *.tsbuildinfo
 .vite/
 
-# Environment / secrets (keep .env.example)
+# Environment / secrets (keep .env.example and .env.ssl.example)
 .env
 .env.*
 !.env.example
+!.env.ssl.example
+
+# Let's Encrypt certificates + ACME webroot issued locally by
+# mbms/deploy/init-letsencrypt.sh — private keys, never committed.
+mbms/deploy/certbot/
 
 # docx_backup*/ snapshot directories (root + nested under docx/).
 # Git history is the version trail; these local safety copies are not tracked.

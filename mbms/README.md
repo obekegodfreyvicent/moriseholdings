@@ -2406,6 +2406,63 @@ load through each of `frontend` and `storefront` succeeds with the request
 round-tripping through nginx to the `backend` container and back, with zero
 browser console errors on either app.
 
+## SSL / TLS certificates — Let's Encrypt (9 September 2026)
+
+An administrator asked for SSL certificates to be added, updated and
+implemented across the project's hosting. There are two hosting paths, and
+they need different treatment:
+
+- **Netlify (Admin app `morise-admin`, Customer Storefront
+  `morise-storefront`) and Render (`morise-backend`, per `render.yaml`)
+  already auto-provision and auto-renew free Let's Encrypt certificates for
+  every site they host** — this has been true, with zero configuration,
+  since each was connected (Updates 104/105). Their `*.netlify.app` /
+  `*.onrender.com` default domains are HTTPS today. Adding a real custom
+  domain later needs no code or certificate work either — Netlify
+  (**Site configuration → Domain management → Add a domain**) and Render
+  (**service → Settings → Custom Domains**) both provision and renew a
+  Let's Encrypt certificate for it automatically once its DNS points at
+  them. There is nothing left to "implement" for this path; it was already
+  live.
+- **The self-hosted `docker-compose.yml` stack had no TLS at all** —
+  `frontend`/`storefront`'s nginx and the `backend` container all serve
+  plain HTTP only (ports 5173/5174/3001), which is fine for local
+  development but not for running the stack on a server reachable from the
+  internet. This is the gap actually closed here: a new
+  `mbms/deploy/` directory adds a public-facing, TLS-terminating reverse
+  proxy in front of the existing containers, with real Let's Encrypt
+  certificates issued and renewed by `certbot`:
+  - `deploy/docker-compose.ssl.yml` — an override adding two services to
+    the base stack: **`nginx-proxy`** (the only container that binds ports
+    80/443 or terminates TLS; it reverse-proxies `frontend:80`,
+    `storefront:80` and `backend:3001` unchanged) and **`certbot`** (a
+    `certbot renew` loop every 12h — no host cron needed).
+  - `deploy/nginx/app.conf.template` + `ssl-params.conf` — one HTTPS
+    server block per app/domain (redirect-to-HTTPS on port 80, TLS 1.2/1.3
+    + HSTS on 443), templated by nginx's own `envsubst` startup step so no
+    domain name is hardcoded.
+  - `deploy/init-letsencrypt.sh` — the standard bootstrap for this pattern:
+    issue a throwaway self-signed certificate so `nginx-proxy` can start at
+    all, start it, then request the real certificate from Let's Encrypt
+    over the HTTP-01 webroot challenge and reload nginx onto it. Safe to
+    re-run; it skips any domain that already has a live certificate.
+  - `deploy/.env.ssl.example` — copy to `deploy/.env.ssl` (gitignored) and
+    fill in three real, publicly resolvable domain names, a real e-mail
+    address, and a `STAGING=1` toggle for first testing against Let's
+    Encrypt's staging endpoint (untrusted certs, but no rate limit — the
+    production endpoint allows only 5 duplicate certificates per domain per
+    week).
+  - To use it on a server with DNS already pointed at it: `cp
+    mbms/deploy/.env.ssl.example mbms/deploy/.env.ssl`, fill it in, then
+    `mbms/deploy/init-letsencrypt.sh`. The nginx config was verified with
+    `nginx -t` inside the pinned `nginx:1.27-alpine` image against the
+    rendered template.
+- **No application, schema, endpoint or permission change** — this is
+  infrastructure only. Recorded as `Implementation Status Update 106`
+  (docs 02–18); cross-ref addenda on docs 19–25; `Implementation Status
+  Note 83` in `Multi_Holdings_Limited_Software_Development_Procedures.docx`;
+  `morise.docx` as **Update 63**.
+
 ## OpenAPI / Swagger API documentation
 
 The backend generates its own OpenAPI 3 contract from the code — it is not
